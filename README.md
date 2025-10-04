@@ -1,2 +1,2 @@
-# Wander-s-Nest
+# Nest of Wander
 my personal blog
