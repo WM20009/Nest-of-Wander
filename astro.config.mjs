@@ -39,7 +39,7 @@ export default defineConfig( /** @type {import('astro').AstroUserConfig} */{
       applyBaseStyles: false,
     }), 
     sitemap(),
-    decapCmsOauth()
+    //decapCmsOauth()
   ],
   vite: {
     plugins: [],
