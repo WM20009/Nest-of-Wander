@@ -22,6 +22,11 @@ export default defineConfig( /** @type {import('astro').AstroUserConfig} */{
   server: {
     // port: 4321, // The port to run the dev server on.
   },
+  image: {
+    service: {
+      entrypoint: 'astro/assets/services/noop' // 禁用图片优化
+    }
+  },
   markdown: {
     syntaxHighlight: 'shiki',
     shikiConfig: {
