@@ -23,7 +23,7 @@ interface Props {
 const { content, meta } = Astro.props
 
 const AUTHOR_NAME = content.author ? content.author : SITE?.author ? SITE?.author : "Author"
-const AUTHOR_TWITTER = content.authorTwitter ? content.authorTwitter : SITE?.authorTwitter ? SITE?.authorTwitter : ""
+const AUTHOR_GITHUB = content.authorGithub ? content.authorGithub : SITE?.authorGithub ? SITE?.authorGithub : ""
 const AUTHOR_AVATAR = content.authorImage ? content.authorImage : SITE?.authorImage ? SITE?.authorImage : ""
 ---
 <!doctype html>
@@ -41,8 +41,8 @@ const AUTHOR_AVATAR = content.authorImage ? content.authorImage : SITE?.authorIm
                 { AUTHOR_AVATAR ? <img class="avatar" src={AUTHOR_AVATAR} alt={`${ AUTHOR_NAME }'s avatar`} /> : ''}
                 <div class={AUTHOR_AVATAR ? 'flex flex-col border-l-2 pl-2' : ''}>
                     {
-                        AUTHOR_TWITTER ?
-                            <a class="post__author" href={`https://twitter.com/${AUTHOR_TWITTER}`} title={`${AUTHOR_NAME}'s twitter`} target="_blank" rel="external">{ AUTHOR_NAME }</a>
+                        AUTHOR_GITHUB ?
+                            <a class="post__author" href={`https://github.com/${AUTHOR_GITHUB}`} title={`${AUTHOR_NAME}'s github`} target="_blank" rel="external">{ AUTHOR_NAME }</a>
                             :
                             <span class="post__author">{ AUTHOR_NAME }</span>
                     }
@@ -83,8 +83,8 @@ const AUTHOR_AVATAR = content.authorImage ? content.authorImage : SITE?.authorIm
                     { AUTHOR_AVATAR ? <img class="author-card__img avatar avatar--lg" src={AUTHOR_AVATAR} alt={`${ AUTHOR_NAME }'s avatar`} /> : ''}
                     <div class="author-card__meta">
                         {
-                            AUTHOR_TWITTER ?
-                                <a class="author-card__author" href={`https://twitter.com/${AUTHOR_TWITTER}`} title={`${AUTHOR_NAME}'s twitter`} target="_blank" rel="external">{ AUTHOR_NAME }</a>
+                            AUTHOR_GITHUB ?
+                                <a class="author-card__author" href={`https://github.com/${AUTHOR_GITHUB}`} title={`${AUTHOR_NAME}'s github`} target="_blank" rel="external">{ AUTHOR_NAME }</a>
                                 :
                                 <span class="author-card__author">{ AUTHOR_NAME }</span>
                         }
@@ -97,7 +97,7 @@ const AUTHOR_AVATAR = content.authorImage ? content.authorImage : SITE?.authorIm
                                 <input type="email" name="email" class="flex-grow border-0 text-theme-accent-gray-dark" required="true">
                                 <button type="submit">Subscribe</button>
                             </form> :
-                            <a class="author-card__follow-btn button" target="_blank" href={`https://twitter.com/intent/follow?screen_name=${AUTHOR_TWITTER}`}><Icon class="w-5 h-5 inline-block" pack="mdi" name="twitter" /> Follow on Twitter</a>
+                            <a class="author-card__follow-btn button" target="_blank" href={`https://github.com/${AUTHOR_GITHUB}`}><Icon class="w-5 h-5 inline-block" pack="mdi" name="github" /> Follow on GitHub</a>
                         }
                     </div>
                 </div>

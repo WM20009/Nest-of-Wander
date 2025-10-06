@@ -39,7 +39,7 @@ export const SITE = {
 	// Author: name
 	author: "Wander", // Example: Fred K. Schott
 	// Author: Twitter handler
-	authorTwitter: "", // Example: FredKSchott
+	authorGithub: "WM20009", // Example: FredKSchott
 	// Author: Image external source
 	authorImage: "/images/avatar.jpg", // Example: https://pbs.twimg.com/profile_images/1272979356529221632/sxvncugt_400x400.jpg, https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png
 	// Author: Bio
