@@ -43,12 +43,18 @@ const posts = await getCollection('blog')
     .hero__says {
         @apply flex-1 text-center md:text-left
     }
+    .hero__says :global(.prose h2) {
+        color: #15803d !important; /* green-700，对应你的 secondary 颜色 */
+    }
+    .dark .hero__says :global(.prose h2) {
+        color: #86efac !important; /* green-300，对应深色模式的 primary 颜色 */
+    }
     .author-card {
-        @apply  h-48 w-48 md:h-56 bg-theme-primary dark:bg-theme-dark-primary rounded-full md:rounded-md shadow-lg
+    @apply h-48 w-48 md:h-56 md:w-56 rounded-full md:rounded-full
     }
     .author-card img {
-        @apply rounded-full h-48 w-48 md:h-56
-    }
+    @apply rounded-full h-48 w-48 md:h-56 md:w-56 object-cover border-2 border-theme-secondary dark:border-theme-dark-secondary
+}
     .page__actions {
         @apply flex justify-center md:justify-end py-6
     }

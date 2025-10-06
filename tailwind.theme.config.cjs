@@ -145,20 +145,20 @@ module.exports = {
      * Color Palette - Default/Duplicate of Purple Heart (Never remove this)
      */
     default: {
-        colors: {
-            primary: colors.purple[700],
-            secondary: colors.purple[800],
-            dark: {
-                primary: colors.purple[300],
-                secondary: colors.purple[500]
+    colors: {
+        primary: colors.green[700],      // 主绿色
+        secondary: colors.green[800],    // 深绿色
+        dark: {
+            primary: colors.green[300],   // 暗模式下的浅绿色
+            secondary: colors.green[500]  // 暗模式下的中绿色
+        },
+        accent: {
+            gray: {
+                light: colors.gray[300],
+                dark: colors.gray[500]
             },
-            accent: {
-                gray: {
-                    light: colors.gray[300],
-                    dark: colors.gray[500]
-                },
-                default: colors.blue[700]
-            }
+            default: colors.blue[700]
         }
     }
+}
 }
