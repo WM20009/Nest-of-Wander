@@ -14,7 +14,7 @@ module.exports = {
     safelist: ['dark'],
     theme: {
 		fontFamily: {
-			sans: ['', ...fontFamily.sans],
+			sans: ['Noto Serif SC', 'SimSun', 'NSimSun', '宋体', 'serif'],
 		},
 		extend: {
             colors: {
