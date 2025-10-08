@@ -10,6 +10,8 @@ import markdoc from "@astrojs/markdoc";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 import remarkCodeTitles from 'remark-code-titles'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
 //import decapCmsOauth from "astro-decap-cms-oauth";
 
 // Full Astro Configuration API Documentation:
@@ -34,7 +36,9 @@ export default defineConfig( /** @type {import('astro').AstroUserConfig} */{
     },
     remarkPlugins: [
       remarkCodeTitles
-    ]
+    ],
+    remarkPlugins: [remarkMath],
+    rehypePlugins: [rehypeKatex]
   },
   integrations: [
     mdx(), 
