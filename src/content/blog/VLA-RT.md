@@ -25,7 +25,7 @@ encoder和decoder都是一系列的transform block堆叠而成。
 测试时，采用自回归，从< sos >token开始，逐个词进行输出。
 
 # RT-1
-![RT-1 architecture](image-2.png)
+![RT-1 architecture](/images/blog/VLA-RT/image-2.png)
 ## 一、Motivation
 从大型、多样化、任务无关的数据集中迁移知识,以 zero-shot 或使用少量任务相关的数据集达到高水平的性能来解决特定的下游任务。实现实时控制。
 ## 二、Methdology
@@ -71,8 +71,9 @@ base 3个维度（x,y,yaw）
 
 ### training
 训练时一次生成一个时间步的所有动作维度，而不是逐维度生成，提高速度。
-
-![full_model](image-3.png)
+<div style="width:50%;margin:0 auto;">
+  <img src="/images/blog/VLA-RT/image-3.png">
+</div>
 
 ## 四、conclusions
 - 数据集的多样性对泛化能力的影响大于数据集的规模
@@ -92,7 +93,7 @@ base 3个维度（x,y,yaw）
   - **这说明人工的设计越少就越接近本质**
 
 # RT-2
-![RT-2 Architecture](image-4.png)
+![RT-2 Architecture](/images/blog/VLA-RT/image-4.png)
 ## 一、Motivation
 这个工作是想将大型的预训练模型融合进去（之前RT-1的预训练模型还比较小），以产生像gpt之类的惊人能力。而之前考虑融合大模型的工作都只是将其作为action paser,在一个high level上将任务分解为基本动作，再交给底层执行器去执行，比如，指令：“把杯子放到桌子上” → 解析成 [抓取杯子] → [移动到桌子] → [放下杯子]。并没有真正地将大型预训练模型融入动作生成之中。并且作者希望能使用网络上的海量数据来进行微调。
 **但是说实话谁能像Google一样去微调这么大的模型呢**
@@ -128,7 +129,7 @@ PaLM-E是vit+decoder-only LLM(专注于将高层次机器人任务分解为机�
 
 
 # RT-Trajectory
-![RT-Trajectory architecture](image-1.png)
+![RT-Trajectory architecture](/images/blog/VLA-RT/image-1.png)
 ## 一、Motivation
 这个工作很明显是接续RT-1和RT-2，探索对于新动作的泛化。
 
@@ -155,13 +156,18 @@ PaLM-E是vit+decoder-only LLM(专注于将高层次机器人任务分解为机�
   - 这些方法主要考虑两个方面：
     - 目标的过度指定与不足指定
     - 对轨迹中所有状态进行条件化还是仅对最终状态进行条件化。
-![police conditioning representation](image.png)
+
+<div style="width:50%;margin:0 auto;">
+  <img src="/images/blog/VLA-RT/image.png">
+</div>
 
 ## 三、Methodology
 所以作者提出了使用粗略轨迹的条件策略化，这是一种中等粒度的任务指定，既不会欠拟合也不会限制其泛化能力。
 
 其轨迹的绘制需要一些trick,比如说通过图片在不同通道上的变化来表示时间和高度，圈表示夹爪和物体的交互。
-![alt text](image-5.png)
+<div style="width:60%;margin:0 auto;">
+  <img src="/images/blog/VLA-RT/image-5.png">
+</div>
 
 此外，作者研究了四种不同的方法来生成轨迹草图：手绘草图、人类视频、使用代码作为策略提示LLMs以及图像生成模型
 
