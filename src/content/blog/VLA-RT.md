@@ -3,7 +3,6 @@ title: VLA Models --Robotic Transformers
 date: "2025-10-4"
 image: https://images.unsplash.com/photo-1589409514187-c21d14df0d04?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=1650&q=80
 author: Wander
-authorTwitter: FredKSchott
 authorImage: /images/avatar.jpg
 category: design
 tags:
@@ -11,18 +10,6 @@ tags:
 - RT
 description: It's a series about Robotic Transformers
 ---
-
-# 原始tranformer的工作流程
-原始的transformer是用来做机器翻译的，具体是首先有一个包含两种语言的tokenizer,然后把待翻译语言序列X输入encoder。
-encoder和decoder都是一系列的transform block堆叠而成。
-
-对于decoder；
-
-训练时，采用teacher forcing技术，输入答案序列Y[:-1],输出Y[1:],再用交叉熵作为损失函数。
-
-**注意:** 在self-attention的时候使用下三角mask保证每个词只能看到其前面的词。cross-attention时没有这种机制。
-
-测试时，采用自回归，从< sos >token开始，逐个词进行输出。
 
 # RT-1
 ![RT-1 architecture](/images/blog/VLA-RT/image-2.png)
