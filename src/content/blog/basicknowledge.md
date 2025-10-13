@@ -5,11 +5,8 @@ author: Wander
 authorImage: /images/avatar.jpg
 category: design
 tags:
-- VLA
-- Flamingo
-- Openvla
-- open-source
-description: some works dedicated for open-source and efficiently fine-tuning
+- basic knowledge
+description: some common knowledge
 ---
 # 原始tranformer的工作流程
 原始的transformer是用来做机器翻译的，具体是首先有一个包含两种语言的tokenizer,然后把待翻译语言序列X输入encoder。

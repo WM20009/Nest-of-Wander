@@ -6,6 +6,14 @@
 		"host": "张小珺的商业访谈录",
 		"participants": ["陈建宇"],
 		"date": "2025-10-07"
+	},
+	{
+		"title": "从极大似然估计到变分自编码器 - VAE 公式推导",
+		"description": "十分清晰的VAE从头推导.",
+		"url": "https://zhuanlan.zhihu.com/p/711402258",
+		"host": "喀秋莎的问候",
+		"participants":"",
+		"date": "2025-10-13"
 	}
 	
 ]

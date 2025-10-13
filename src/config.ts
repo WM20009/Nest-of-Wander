@@ -25,9 +25,9 @@ export const NAV_ITEMS: NavItems = {
 
 export const SITE = {
 	// Your site's detail?
-	name: "Wander 的小窝",
+	name: "Wander's Nest",
 	title: "I'm wandering",
-	description: "这里是我的点点滴滴",
+	description: "茫茫黑夜漫游",
 	url: "https://astro-ink.vercel.app",
 	githubUrl: "https://github.com/WM20009",
 	listDrafts: true,
