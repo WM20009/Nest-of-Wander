@@ -1,6 +1,6 @@
 ---
 title: VLA Models --探索开源与高效微调
-date: "2025-10-6"
+date: "2025-10-06"
 author: Wander
 authorImage: /images/avatar.jpg
 category: design

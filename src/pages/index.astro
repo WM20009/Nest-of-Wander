@@ -7,6 +7,9 @@ import PostPreviewList from '$/components/PostPreviewList.astro'
 import Prose from '$/components/Prose.astro'
 import { Content as AboutAstroInk } from './_astro-ink.md'
 
+const recentposts = await getCollection('blog')
+const sortedPosts = recentposts
+  .sort((b, a) => new Date(b.data.pubDate).getTime() - new Date(a.data.pubDate).getTime()).slice(-3)
 
 const title = 'Home'
 const description = 'Astro-Ink is a crisp, minimal, personal blog theme for Astro'
@@ -27,7 +30,7 @@ const posts = await getCollection('blog')
         </div>
     </div>
     <hr/>
-    <PostPreviewList posts={posts.slice(0, 3)} heading="recent posts"/>
+    <PostPreviewList posts={sortedPosts} heading="recent posts"/>
     <div class="page__actions">
         <a class="action__go-to-blog ink-h" href="/blog" title="All Posts">All Posts &rarr;</a>
     </div>
