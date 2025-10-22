@@ -1,5 +1,5 @@
 ---
-title: VAE(未完成)
+title: VAE
 date: "2025-10-12"
 author: Wander
 authorImage: /images/avatar.jpg

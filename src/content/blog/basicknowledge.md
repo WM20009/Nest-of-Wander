@@ -19,3 +19,6 @@ encoder和decoder都是一系列的transform block堆叠而成。
 **注意:** 在self-attention的时候使用下三角mask保证每个词只能看到其前面的词。cross-attention时没有这种机制。
 
 测试时，采用自回归，从< sos >token开始，逐个词进行输出。
+
+# 标签平滑
+  多分类任务中不使用one-hot编码的gt,而是给一些不可能的类也分配一点点概率。避免模型的置信度过高，导致容错率低、不易校准、不能建模不确定性等。
