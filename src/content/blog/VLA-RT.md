@@ -12,7 +12,7 @@ description: It's a series about Robotic Transformers
 ---
 
 # RT-1
-![RT-1 architecture](/images/blog/VLA-RT/image-2.png)
+![RT-1 architecture](/public/images/blog/VLA-RT/image-2.png))
 ## 一、Motivation
 从大型、多样化、任务无关的数据集中迁移知识,以 zero-shot 或使用少量任务相关的数据集达到高水平的性能来解决特定的下游任务。实现实时控制。
 ## 二、Methdology
