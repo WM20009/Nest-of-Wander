@@ -29,7 +29,7 @@ description: 学习VAE时存一下checkpoints，便于复习。
 
 而在一般的具有 $T$ 层级的 HVAE 中，每个潜在变量都可以依赖于所有之前的潜在变量，在本文中我们关注一种特殊的案例，我们称之为马尔可夫 HVAE(MHVAE）。在 MHVAE 中，生成过程是一个马尔可夫链；也就是一个具有 $T$ 个层次潜在变量的马尔可夫链分层变分自编码器。生成过程被建模为一个马尔可夫链，其中每个潜在 $z_t$ 仅从之前的潜在 $z_{t+1}$ 生成。就是说，每一层向下的转移都是马尔可夫性的，其中解码每个潜在变量 $z_t$ 仅依赖于前一个潜在变量 $z_{t+1}$ 。
 <div style="width: 60%; margin: 0 auto;">
-  <img src="/public/images/blog/checkpoints-VAE/image.png">
+  <img src="/images/blog/checkpoints-VAE/image.png">
 </div>
 直观上和视觉上，这可以看作是将 VAEs 逐层堆叠在一起.
 

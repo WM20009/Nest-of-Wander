@@ -21,4 +21,4 @@ description: 电路课的笔记
 
 那这样换来换去有什么好处呢？
 - 比如原来电路只有一个独立源，但是我们把电阻换掉后就有两个独立源，这样就可以使用叠加定理等，比如下面这题（并不是我写的）：
-  ![alt text](/public/images/blog/curcuit-note/image.png)
+  ![alt text](/images/blog/curcuit-note/image.png)

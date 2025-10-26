@@ -12,7 +12,7 @@ description: flow-matching 学习笔记
 模仿[这篇文章](https://zhuanlan.zhihu.com/p/28731517852)做的一个小demo,目标是在二维平面上将一堆高斯噪声中的100个点“挪”到$sinx$上。
 感觉最后效果很不错啊。
 <div style="width: 60%; margin: 0 auto;">
-  <img src="/public/images/blog/flow-matching/image.png">
+  <img src="/images/blog/flow-matching/image.png">
 </div>
 
 ```python

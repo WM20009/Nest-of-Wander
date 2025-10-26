@@ -97,7 +97,7 @@ df.loc 左闭右闭(index索引)
 df.iloc 左闭右开(整数索引)
 
 ## Dataloader
-![dataloader](/public/images/blog/tips/image.png)
+![dataloader](/images/blog/tips/image.png)
 
 ## permute,transpose,reshape,view
 permute和transpose事实上就是交换stride,因为i\*stride[0]+j\*stride[1]+k\*stride[2]就等价于j\*stride[1]+i\*stride[0]+k\*stride[2]等等。
@@ -111,6 +111,6 @@ reshape和view修改size,再根据新size算出新stride。
 view必须作用于内存连续的张量，reshape更只能，可以先contiguous再view。
 
 ## 关于布尔索引的广播
-![a](/public/images/blog/tips/image-1.png)
+![a](/images/blog/tips/image-1.png)
 
-![b,c](/public/images/blog/tips/image-2.png)
+![b,c](/images/blog/tips/image-2.png)
