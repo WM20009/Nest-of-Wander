@@ -1,6 +1,6 @@
 ---
 title: Tips
-date: "2025-08-00"
+date: "2025-08-01"
 author: Wander
 authorImage: /images/avatar.jpg
 category: design
