@@ -8,6 +8,6 @@ tags:
 - video
 description: 通过CS231N对video understanding的一个初步了解
 ---
-[CS231n Lecture 10 Slides](https://cs231n.stanford.edu/slides/2025/lecture_10.pdf)
+### [Slides](https://cs231n.stanford.edu/slides/2025/lecture_10.pdf)
 # Video Understanding
 ## 
