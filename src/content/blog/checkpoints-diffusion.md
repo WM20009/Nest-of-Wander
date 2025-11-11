@@ -8,7 +8,8 @@ tags:
 - Diffusion
 description: 学习Diffusion时存一下checkpoints，便于复习。
 ---
-# VDM
+
+# DDPM
 **这里省略了大量的数学推导，仅保留必要的数学表达式，以提高可读性**
 
 书接上回，我们可以认为variable diffusion model就是具有如下三条假设的HVAE:
@@ -101,9 +102,90 @@ $$
 这里也可以这样理解，任意时间步的图像都可以由原始图像一步加噪得到，我们只要用网络去预测加的那个噪声也可以达到同样的效果。并且也许预测噪声相当于resnet预测残差的想法，可能更容易拟合（？）故而效果更好。
 
 而这实际上就是DDPM的做法。
+![ddpm](/images/blog/diffusion/image.png)
 ### 第三种
-
+一个基于score-function的理解，由于数学部分过于困难，建议看这个[视频](https://www.youtube.com/watch?v=lUljxdkolK8)理解一下大概的思想。（这是视频实在对入门者相当的友好！）
 ## 条件生成
+参考[这个视频](https://www.youtube.com/watch?v=iv-5mZ_9CPY)，现在主流的方法是classifier-free guidance，大概的想法就是：
+在推理（生成）时，我们不需要任何外部分类器。对于同一个输入噪声，我们让这个统一的模型同时进行两次预测：
+- 无条件预测：$ε_{uncond} = model(x_t, ∅)$
+- 条件预测：$ε_{cond} = model(x_t, y)$
+  
+然后，我们计算两者的方向差，并将这个差值放大：
+$ε_{final} = ε_{uncond} + s * (ε_{cond} - ε_{uncond})$
+
+# DDIM
+
+DDIM是一种比DDPM更快速的采样方法，常常采用离散设定（η = 0）：
+
+## 1. 选择时间步
+- 从集合 {1, ..., T} 中选择一个包含 N 个时间步的子序列  
+  
+
+$$
+  S = \{s_1, s_2, ..., s_N\}, \quad s_1 = 1, \; s_N = T, \; s_i < s_{i+1}
+$$
+
+  
+- 记作  
+  
+
+$$
+S = \{t_0, t_1, ..., t_N\}, \quad t_N = T, \; t_0 = 0
+$$
+
+
+## 2. 获取噪声预测模型
+训练一个模型 $\epsilon_\theta(x_t, t)$ 来预测噪声 $\epsilon$，满足：
+
+
+$$
+x_t = \sqrt{\alpha_t} \, x_0 + \sqrt{1 - \alpha_t} \, \epsilon, \quad \epsilon \sim \mathcal{N}(0, I)
+$$
+
+## 3. 采样过程
+- 初始化：  
+$$
+  x_T \sim \mathcal{N}(0, I)
+$$
+
+- 对于 $i = N, ..., 1$：  
+  1. **预测噪声**  
+    $$
+     \epsilon = \epsilon_\theta(x_{t_i}, t_i)
+    $$
+
+  
+  2. **估计 $x_0$**  
+    $$
+     \hat{x}_0 = \frac{x_{t_i} - \sqrt{1 - \alpha_{t_i}} \, \epsilon_\theta(x_{t_i}, t_i)}{\sqrt{\alpha_{t_i}}}
+    $$
+
+  
+  3. **计算 $\sigma_t$ 和均值 $\mu_t$**  
+    $$
+    \sigma_t = \eta \cdot \sqrt{\frac{1 - \alpha_{t_{i-1}}}{1 - \alpha_{t_i}}} \cdot \sqrt{1 - \frac{\alpha_{t_i}}{\alpha_{t_{i-1}}}}
+    $$
+    $$
+     \mu_t = \sqrt{\alpha_{t_{i-1}}} \, \hat{x}_0 + \sqrt{1 - \alpha_{t_{i-1}} - \sigma_t^2} \, \epsilon_\theta(x_{t_i}, t_i)
+    $$
+
+  
+  4. **更新采样**  
+    $$
+    x_{t_{i-1}} \sim \mathcal{N}(\mu_t, \sigma_t^2)
+    $$
+  （当设定 $\eta = 0$ 时，$\sigma_t$ = 0）
+
+## 4. 输出
+最终输出 $x_0$，即为生成的样本。
+## 说明
+- $\alpha_t$：根据预定义的时间步 $t$ 计算的超参数，通常是线性或余弦调度函数。  
+- $\epsilon_\theta$：训练好的噪声预测模型。  
+- $\hat{x}_0$：对原始样本的估计值。  
+- $\sigma_t$：控制采样过程中的随机性。  
+- $\mu_t$：生成下一个时间步的均值。
 
 # 参考资料
-[Understanding Diffusion Models: A Unified Perspective](https://arxiv.org/abs/2208.11970)（所有内容均是基于该教程的压缩和总结）
+- [Understanding Diffusion Models: A Unified Perspective](https://arxiv.org/abs/2208.11970)
+- Denoising Diffusion Implicit Models, Jiaming Song, Chenlin Meng, Stefano Ermon, 2020 International Conference on Learning Representations (ICLR) DOI: 10.48550/arXiv.2010.02502 
