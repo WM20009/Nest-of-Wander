@@ -186,6 +186,10 @@ $$
 - $\sigma_t$：控制采样过程中的随机性。  
 - $\mu_t$：生成下一个时间步的均值。
 
+# DiT
+用transformer架构替代了Unet，作为diffusion使用的架构。
+![DiT](/images/blog/diffusion/image1.png)
+这张图已然说明一切。
 # 参考资料
 - [Understanding Diffusion Models: A Unified Perspective](https://arxiv.org/abs/2208.11970)
 - Denoising Diffusion Implicit Models, Jiaming Song, Chenlin Meng, Stefano Ermon, 2020 International Conference on Learning Representations (ICLR) DOI: 10.48550/arXiv.2010.02502 
