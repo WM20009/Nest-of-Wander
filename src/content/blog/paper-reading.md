@@ -1,22 +1,23 @@
 ---
-title: video generation paper reading
+title: Paper reading(1)
 date: "2025-11-14"
 author: Wander
 authorImage: /images/avatar.jpg
 category: design
 tags:
 - video generation
-description: 论文阅读，一些记录
+- world model
+description: from video generation to world model
 ---
-# MovieGen&Hunyuan Video
+视频生成主要范式为基于扩散的和基于自回归的。
+# Diffusion-Based
+基于扩散的方法主要是high fidelity和coherence,由于质量高，目前最主流的商业模型一般都是这个架构。
+## MovieGen&Hunyuan Video
 两者结构差不多，故放在一起
 ![moviegen](/images/blog/paper-reading/image.png)
 ![hunyuan](/images/blog/paper-reading/image1.png)
-## [video](https://www.bilibili.com/video/BV1U65SzuE4p?spm_id_from=333.788.videopod.sections&vd_source=09fde7223b2a977074582eca951dfd39)
-## Pipline
-以下为ai总结：
-
-这是一个 **基于流匹配（Flow Matching）的 DiT 扩散模型**，采用 **3D-VAE 压缩 + Transformer 去噪 + 速度预测** 的范式，并支持**文本驱动**和**图像条件**两种生成模式。
+### [video](https://www.bilibili.com/video/BV1U65SzuE4p?spm_id_from=333.788.videopod.sections&vd_source=09fde7223b2a977074582eca951dfd39)
+### Training
 
 #### Step 1: 视频压缩（3D-VAE 编码）
 - **输入**：真实视频 $u$，尺寸为 $(T+1) × H × W$（T+1 帧）
@@ -59,7 +60,7 @@ description: 论文阅读，一些记录
   $
 - **优势**：相比预测噪声，速度预测更稳定，采样步数更少
 
-### 三、推理流程（生成视频）
+### Inference
 
 #### Step 1: 初始化
 - 从高斯噪声 $z_T$ 开始（T=1）
@@ -76,37 +77,54 @@ description: 论文阅读，一些记录
 #### Step 3: 解码
 - 得到干净的潜码 $z₀$ 后，用 **3D-VAE 解码器** 重建为像素视频 $u$
 
-### 四、关键技术总结
-
-| 模块 | 技术选型 | 作用 |
-|------|----------|------|
-| **压缩** | 3D-VAE | 时空联合压缩，比 2D 更适配视频 |
-| **架构** | DiT (Diffusion Transformer) | 全局注意力，擅长长时序建模 |
-| **融合** | Dual → Single Stream | 平衡模态独立性与交互性 |
-| **条件** | Channel-wise Concat | 简洁有效的图像条件注入 |
-| **目标** | Velocity Prediction | 流匹配，训练稳定、采样快 |
-| **求解** | Euler ODE Solver | 一阶常微分方程，简单高效 |
-
-### 五、典型应用场景
-1. **文生视频**：只给文本 $y$，生成 $z₀$
-2. **图生视频**：给首帧图像，通道拼接后生成后续帧
-3. **视频编辑**：对潜码进行插值或局部修改
-
----
-
-**一句话总结**：该模型用 3D-VAE 压缩视频，用双流-单流 DiT 融合文本与视觉信息，通过预测速度的方式训练，最后用 ODE 求解器快速生成高质量视频，兼顾了效率与效果。
 ## Notes
 - TAE：一般就是3D Conv或者1D+2D，以及再加一些temperal self-attention.对H,W,T同时下采样8倍。
 - pachify：在H,W,T上同时下采样立方体。
+- 3D position embedding：将传统2D图像的位置嵌入扩展为独立的时间、高度、宽度三个一维嵌入表：$p(t,h,w)=p_{temporal}(t)+p_{height}(h)+p_{width}(w)$,每个token对应一个3D坐标 $(t,h,w)$,分别从三个嵌入表中查表，再逐元素相加得到最终位置编码
 - text-encoder：同时用好几个encoder再concate,这是因为clip型的适合用于提取globally semantic feature,然后还需要一些文字级别的featrue(可以用ByT5)
 - 直接在隐空间中进行flow matching
-- 并非自回归结构，依然是同时对所有帧加噪去噪
+- 并非自回归结构，是同时对所有帧加噪去噪。这种方法是直观的，因为一段视频内部有着极其强烈的依赖，不只是语义上的依赖还有帧与帧之间的平滑过渡等，所以将整段视频同时生成是合理的。但是这显然也有很大的问题，无法有效扩展到无限长，无法实时交互，缺乏因果等都是问题
 - 在推理时进行tiling，也就是把整个视频分块生成，块之间有一些overlapping进行线性融合避免伪影。
 
 
-从这两个工作来看和world model 之间的gap还非常明显，显然没有real-time interaction，用户的自由度还很低，生成的视频也很短，还没使用自回归架构，物理不一致也很多。
+这两个工作作为视频生成来讲算是不错，但是和world model 之间的gap还非常明显，显然没有real-time interaction，用户的自由度还很低，生成的视频也很短，还没使用自回归架构，物理不一致也很多。
 
-下一篇工作是腾讯的Voyager，能够根据图片输入和用户指定的相机轨迹来生成视频，并且进行3D重建，用户可控性更强了一些。
+除了diffusion策略之外，自回归生成也是视频生成领域的一条主线。自回归的好处在于能够理论上无限制地扩展长度，并且允许交互。
+
+# Autoregressive-Based
+借鉴于LLM，如GPT等的做法，引入自回归方法，通过将视频表示为token,预定义一个的可学习的“词表”进行生成。自回归范式主要分为：next-token,next-block,next-scale等等
+
+## Visual Tokenizer
+![tokenizer](https://pic1.zhimg.com/v2-e7bd594f654d1c0f2d89891788dc6648_r.jpg)
+这是一个典型的spatio-temporal tokenizer。
+
+## paradigm
+![alt text](https://pic4.zhimg.com/v2-818428658ca7c2c16b3c667376b27fab_1440w.jpg)
+
+但是这又很明显有一个问题。建立一个类似于词表的视觉codebook我认为事实上并不太合理，因为视觉内容并不像语言一样可以被一个词表穷尽，强行量化只会导致质量上的损失。
+
+于是又有工作结合了扩散和自回归的优点。
+## [Next frame diffusion](https://arxiv.org/pdf/2506.01380)
+这个工作用扩散的方式进行next-frame prediction，实现了交互性。交互性体现在“动作条件视频生成”。该模型以过去帧序列 ${x_1:i}$ 和动作 $a_i$ 为条件，并训练用于预测下一帧 $x_{i+1}$ 
+
+### Architecture
+NFD 的架构包含一个将原始视觉信号变换为潜在表示的 tokenizer，以及一个生成这些潜在表示的 Diffusion Transformer。
+- Tokenizer：为了实现帧级别与模型的交互，作者采用了一个图像级别的 tokenizer，将
+每一帧转换为一系列潜在表示。对于动作，将相机角度量化为离散的区间（这后会看到这并没有那么好），并将其他动作分类为 7 个互斥的类别，每个类别由一个唯一的 token表示。
+- 块级因果注意力机制：该机制结合了每帧内的双向注意力和跨帧的因果依赖关系，以高效地建模时空依赖。具体而言，对于每帧中的每个 token，它将关注同一帧内的所有 token（即帧内注意力），以及所有先前帧中的 token（即因果帧间注意力）。与计算密集型的 3D 全注意力机制相比，该方法50% 降低了总体成本，从而实现了硬件高效且流式地并行预测下一帧中的所有 token。
+- 动作条件化。 作者利用一个线性层将动作映射为动作向量，并探索了多种 DiT 架构设计，以将动作条件化融入模型中。遵循 DiT 的方法，研究了三种条件化机制adaLN-zero 块、交叉注意力块和上下文条件化。作者采用 adaLN-zero 条件化，因为它在经验上表现出最佳性能。
+- 三维位置嵌入。 遵循 HunyuanVideo [30]，我们将查询和键 token 的头部维度分离为[nT , nH , nW ]，独立编码它们的时间和空间对应关系。具体而言，我们分别计算每个轴的旋转频率嵌入，并沿最后一个维度将它们连结起来。
+
+### Training&Sampling
+采用flow-matching，采用动作和前序帧进行引导。
+
+### #
+接下来该工作还有很多其他的技巧和方法来进一步加速采样过程，以实现实时的交互。由于并非这篇blog的重点故而按下不表。😂
+
+感觉这篇工作也是非常自然的想法，结合了扩散和自回归。而且离world model也更近了一步。
+
+
+下一篇工作是腾讯的Voyager，能够根据图片输入和用户指定的相机轨迹来生成视频，并且进行3D重建，又是一个新的Task。
 
 # [Voyager](https://arxiv.org/pdf/2506.04225v1)
 ![voyager](/images/blog/paper-reading/image2.png)
