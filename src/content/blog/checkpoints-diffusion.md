@@ -20,13 +20,25 @@ description: 学习Diffusion时存一下checkpoints，便于复习。
 ## 编码器
 **编码器**显式地建模为:
 $$q\left(\boldsymbol{x}_{t} \mid \boldsymbol{x}_{t-1}\right)=\mathcal{N}\left(\boldsymbol{x}_{t} ; \sqrt{\alpha_{t}} \boldsymbol{x}_{t-1},\left(1-\alpha_{t}\right) \mathbf{I}\right)$$
-这成为线性高斯模型。
-它有一些十分良好的性质，当我们给定了$\alpha_1,\alpha_2,\dots,\alpha_T$之后，$q(\boldsymbol{x}_t \mid \boldsymbol{x}_0)$和$q(\boldsymbol{x}_{t-1} \mid \boldsymbol{x}_t, \boldsymbol{x}_0)$可以直接解析得到，且都是正态分布。
+这称为线性高斯模型。
+
+编码器这样规定的目的是：当我们任意给定一个干净图像$x_0$,我们总可以通过设置噪声调度并且在足够长的时间步T（这也是其推理很慢的原因）后使得$x_T$服从标准正态，进而方便我们进行采样。
+
+并且，它有一些十分良好的性质，当我们给定了$\alpha_1,\alpha_2,\dots,\alpha_T$之后，$q(\boldsymbol{x}_t \mid \boldsymbol{x}_0)$和$q(\boldsymbol{x}_{t-1} \mid \boldsymbol{x}_t, \boldsymbol{x}_0)$可以直接解析得到，且都是正态分布。
 
 其中，$q(\boldsymbol{x}_t\mid\boldsymbol{x}_0)\sim \mathcal{N}(\sqrt{\bar{\alpha_t}}\boldsymbol{x_0},(1-\bar{\alpha_t})\mathbf{I}),\bar{\alpha_t}=\prod_{i=1}^t\alpha_i$
-另一下在下文给出。
+另一个在下文给出。
 ## ELBO
-$ELBO$为:
+我们通过最大似然估计来优化模型参数，具体来说是通过优化似然函数的下界（ELBO）来间接优化似然函数。
+
+表达式为：
+$$
+\log{p(x_0)}=\int \log{p(x_{0:T})} dx_{1:T}
+$$
+
+这表示了任意干净图像$x_0$的似然,对所有从正态分布到$x_0$的轨迹积分。
+
+ELBO为:
 
 $$
 \underbrace{\mathbb{E}_{q\left(\boldsymbol{x}_{1} \mid \boldsymbol{x}_{0}\right)}\left[\log p_{\theta}\left(\boldsymbol{x}_{0} \mid \boldsymbol{x}_{1}\right)\right]}_{\text {reconstruction term }}-\underbrace{D_{\mathrm{KL}}\left(q\left(\boldsymbol{x}_{T} \mid \boldsymbol{x}_{0}\right) \| p\left(\boldsymbol{x}_{T}\right)\right)}_{\text {prior matching term }}-\sum_{t=2}^{T} \underbrace{\mathbb{E}_{q\left(\boldsymbol{x}_{t} \mid \boldsymbol{x}_{0}\right)}\left[D_{\mathrm{KL}}\left(q\left(\boldsymbol{x}_{t-1} \mid \boldsymbol{x}_{t}, \boldsymbol{x}_{0}\right) \| p_{\theta}\left(\boldsymbol{x}_{t-1} \mid \boldsymbol{x}_{t}\right)\right)\right]}_{\text {denoising matching term }}
@@ -104,7 +116,20 @@ $$
 而这实际上就是DDPM的做法。
 ![ddpm](/images/blog/diffusion/image.png)
 ### 第三种
-一个基于score-function的理解，由于数学部分过于困难，建议看这个[视频](https://www.youtube.com/watch?v=lUljxdkolK8)理解一下大概的思想。（这是视频实在对入门者相当的友好！）
+一个基于score-function的理解，可以看这个[视频](https://www.youtube.com/watch?v=lUljxdkolK8)理解一下大概的思想。（这是视频实在对入门者相当的友好！）
+
+这个解释可以通过Tweedie公式得到：
+
+Tweedie公式指出，给定从指数族分布中抽取的样本，该分布的真实均值可以通过样本的极大似然估计（即经验均值）加上一个涉及估计得分的校正项来估计。在仅有一个观测样本的情况下，经验均值就是该样本本身。它常用于减轻样本偏差；如果观测样本都位于潜在分布的一端，那么负得分会变得很大，并将样本的朴素极大似然估计向真实均值进行修正。
+
+数学上，对于高斯变量 $ z \sim \mathcal{N}(z; \mu_z, \Sigma_z) $，Tweedie 公式表述为：
+$$
+\mathbb{E}[\mu_z \mid z] = z + \Sigma_z \nabla_z \log p(z)
+$$
+
+最后经过一系列推导我们可以发现，最后训练目标也可以归结为预测在任意时间步T下，$q(x_t|x_0)关于x_t$的梯度。
+
+并且，预测score function事实上和预测$\epsilon$只差了一个常数缩放因子。直观上，由于源噪声被添加到自然图像中以使其失真，因此向相反方向移动可以“去噪”图像，并且是提高后续对数概率的最佳更新。所以学习建模评分函数等同于建模源噪声的负数（忽略一个缩放因子）。
 ## 条件生成
 参考[这个视频](https://www.youtube.com/watch?v=iv-5mZ_9CPY)，现在主流的方法是classifier-free guidance，大概的想法就是：
 在推理（生成）时，我们不需要任何外部分类器。对于同一个输入噪声，我们让这个统一的模型同时进行两次预测：
@@ -115,10 +140,29 @@ $$
 $ε_{final} = ε_{uncond} + s * (ε_{cond} - ε_{uncond})$
 
 # DDIM
+[参考苏神博客](https://kexue.fm/archives/9181)
+DDIM是是DDPM在的推广，它观察到DDPM的ELBO的推导中并未用到马尔可夫性质，故而取消了这一限制，只要求新的转移方式仍然满足原来的$p(x_t|x_0)$，并且注意到当取消了马尔可夫性质后，$q(x_{t-1}|x_t,x_0)$不再是原来的表达式，我们可以通过推导得到其可以具备以下形式：
 
-DDIM是一种比DDPM更快速的采样方法，常常采用离散设定（η = 0）：
+$$
+q(x_{t-1} \mid x_t, x_0) \sim \mathcal{N} \left(
+x_{t-1};\ 
+\frac{\sqrt{\beta_{t-1}^2 - \sigma_t^2}}{\bar{\beta}_t} x_t + 
+\left( \bar{\alpha}_{t-1} - \bar{\alpha}_t \cdot \frac{\sqrt{\beta_{t-1}^2 - \sigma_t^2}}{\bar{\beta}_t} \right) x_0,\ 
+\sigma_t^2 \mathbf{I}
+\right)
+$$
+其中$\sigma_t$可以自己设置，取某个值的时候会退化为DDPM，取0时,会变成确定性采样
 
-## 1. 选择时间步
+进行上述改动后，事实上DDIM的训练算法和DDPM完全相同，区别只在采样。
+
+而DDIM对于采样的加速取决于另一个观察：**DDPM的训练结果实质上包含了它的任意子序列参数的训练结果。**
+
+所以实际上DDPM也可以进行跳步采样，而DDIM在此基础上更进一步，通过改变$\sigma_t$能得到更好的采样效果。
+
+根据实验结果，应该是$\sigma_t$越小。效果越好。
+
+下面给出$\sigma_t$取某一个值的时候的采样算法。
+### 1. 选择时间步
 - 从集合 {1, ..., T} 中选择一个包含 N 个时间步的子序列  
   
 
@@ -135,7 +179,7 @@ S = \{t_0, t_1, ..., t_N\}, \quad t_N = T, \; t_0 = 0
 $$
 
 
-## 2. 获取噪声预测模型
+### 2. 获取噪声预测模型
 训练一个模型 $\epsilon_\theta(x_t, t)$ 来预测噪声 $\epsilon$，满足：
 
 
@@ -143,7 +187,7 @@ $$
 x_t = \sqrt{\alpha_t} \, x_0 + \sqrt{1 - \alpha_t} \, \epsilon, \quad \epsilon \sim \mathcal{N}(0, I)
 $$
 
-## 3. 采样过程
+### 3. 采样过程
 - 初始化：  
 $$
   x_T \sim \mathcal{N}(0, I)
@@ -163,6 +207,7 @@ $$
 
   
   3. **计算 $\sigma_t$ 和均值 $\mu_t$**  
+   （注意这里的$\alpha_t$并不是训练时所指定的那些）
     $$
     \sigma_t = \eta \cdot \sqrt{\frac{1 - \alpha_{t_{i-1}}}{1 - \alpha_{t_i}}} \cdot \sqrt{1 - \frac{\alpha_{t_i}}{\alpha_{t_{i-1}}}}
     $$
@@ -177,7 +222,7 @@ $$
     $$
   （当设定 $\eta = 0$ 时，$\sigma_t$ = 0）
 
-## 4. 输出
+### 4. 输出
 最终输出 $x_0$，即为生成的样本。
 ## 说明
 - $\alpha_t$：根据预定义的时间步 $t$ 计算的超参数，通常是线性或余弦调度函数。  
@@ -192,4 +237,3 @@ $$
 这张图已然说明一切。
 # 参考资料
 - [Understanding Diffusion Models: A Unified Perspective](https://arxiv.org/abs/2208.11970)
-- Denoising Diffusion Implicit Models, Jiaming Song, Chenlin Meng, Stefano Ermon, 2020 International Conference on Learning Representations (ICLR) DOI: 10.48550/arXiv.2010.02502 
