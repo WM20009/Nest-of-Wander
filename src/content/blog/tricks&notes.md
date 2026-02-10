@@ -114,3 +114,9 @@ view必须作用于内存连续的张量，reshape更只能，可以先contiguou
 ![a](/images/blog/tips/image-1.png)
 
 ![b,c](/images/blog/tips/image-2.png)
+
+## np.array vs np.asarray
+这两者最大的区别是当传入的参数已经是np.ndarray时，后者不再复制，而前者还要复制。所以用后者更好
+
+## 约束优化
+如果一个要优化的参数必须是正数的话，为了避免其变成负数，我们可以取对数后进行优化，要用的时候再取exp
