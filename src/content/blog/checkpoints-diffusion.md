@@ -10,6 +10,7 @@ description: 学习Diffusion时存一下checkpoints，便于复习。
 ---
 
 # DDPM
+参考- [Understanding Diffusion Models: A Unified Perspective](https://arxiv.org/abs/2208.11970)
 **这里省略了大量的数学推导，仅保留必要的数学表达式，以提高可读性**
 
 书接上回，我们可以认为variable diffusion model就是具有如下三条假设的HVAE:
@@ -116,20 +117,10 @@ $$
 而这实际上就是DDPM的做法。
 ![ddpm](/images/blog/diffusion/image.png)
 ### 第三种
-一个基于score-function的理解，可以看这个[视频](https://www.youtube.com/watch?v=lUljxdkolK8)理解一下大概的思想。（这是视频实在对入门者相当的友好！）
+一个基于score-function的理解，可以看这个[视频](https://www.youtube.com/watch?v=lUljxdkolK8)理解一下大概的思想。
 
-这个解释可以通过Tweedie公式得到：
+接着可以看[Yang Song的blog](https://yang-song.net/blog/2021/score/),没有什么比这个写得更直观且完整了。
 
-Tweedie公式指出，给定从指数族分布中抽取的样本，该分布的真实均值可以通过样本的极大似然估计（即经验均值）加上一个涉及估计得分的校正项来估计。在仅有一个观测样本的情况下，经验均值就是该样本本身。它常用于减轻样本偏差；如果观测样本都位于潜在分布的一端，那么负得分会变得很大，并将样本的朴素极大似然估计向真实均值进行修正。
-
-数学上，对于高斯变量 $ z \sim \mathcal{N}(z; \mu_z, \Sigma_z) $，Tweedie 公式表述为：
-$$
-\mathbb{E}[\mu_z \mid z] = z + \Sigma_z \nabla_z \log p(z)
-$$
-
-最后经过一系列推导我们可以发现，最后训练目标也可以归结为预测在任意时间步T下，$q(x_t|x_0)关于x_t$的梯度。
-
-并且，预测score function事实上和预测$\epsilon$只差了一个常数缩放因子。直观上，由于源噪声被添加到自然图像中以使其失真，因此向相反方向移动可以“去噪”图像，并且是提高后续对数概率的最佳更新。所以学习建模评分函数等同于建模源噪声的负数（忽略一个缩放因子）。
 ## 条件生成
 参考[这个视频](https://www.youtube.com/watch?v=iv-5mZ_9CPY)，现在主流的方法是classifier-free guidance，大概的想法就是：
 在推理（生成）时，我们不需要任何外部分类器。对于同一个输入噪声，我们让这个统一的模型同时进行两次预测：
@@ -239,8 +230,90 @@ $$
 ![DiT](/images/blog/diffusion/image1.png)
 这张图已然说明一切。
 # 参考资料
-- [Understanding Diffusion Models: A Unified Perspective](https://arxiv.org/abs/2208.11970)
 
 
-# Score-based Model&SDE
-请直接看[作者的blog](https://yang-song.net/blog/2021/score/),没有什么比这个写得更直观且完整了。
+
+# 深度解析 DMD 损失函数：从边缘分布到条件分数的数学证明
+
+在单步扩散模型蒸馏（One-step Diffusion Distribution Matching Distillation, DMD）等论文中，损失函数的核心思想是让 Student 模型生成的分布 $p_{\text{fake}}$ 匹配 Teacher 模型的真实分布 $p_{\text{real}}$。
+
+在数学实现时，一个关键的转化是将难以直接计算的**边缘分布分数（Marginal Score）** $\nabla \log p(x_t)$ 转化为**条件分布分数（Conditional Score）** $\nabla \log p(x_t | x_0)$。本文将从数学推导出发，详细证明这一转化的合理性及其背后的**去噪分数匹配（Denoising Score Matching, DSM）**理论。
+
+## 1. 核心问题背景
+
+在扩散模型框架下，分布对齐等价于在各个噪声水平 $t$ 下对齐 Score：
+$$\nabla_{x_t} \log p_{\text{fake}}(x_t, t) \longleftrightarrow \nabla_{x_t} \log p_{\text{real}}(x_t, t)$$
+
+然而，边缘分布 $p(x_t)$ 是通过对整个数据集进行积分得到的：
+$$p(x_t) = \int p(x_t|x_0)p(x_0) dx_0$$
+直接对该积分求对数梯度在数学上是不可解的（Intractable）。为此，DMD 引入了 **Denoising Score Matching (DSM)** 的等价性结论。
+
+---
+
+## 2. 必备数学工具
+
+在推导开始前，我们需要掌握两个核心数学技巧：
+
+### 2.1 莱布尼茨积分规则 (Leibniz Rule)
+在满足平滑性条件（如高斯分布）时，梯度算子可以与积分符号交换：
+$$\nabla_{x_t} \int p(x_t | x_0) p(x_0) dx_0 = \int \nabla_{x_t} p(x_t | x_0) p(x_0) dx_0$$
+
+### 2.2 对数导数技巧 (Log-Derivative Trick)
+根据复合函数链式法则，对于任何正值函数 $f(x)$：
+$$\nabla \log f(x) = \frac{\nabla f(x)}{f(x)} \implies \nabla f(x) = f(x) \nabla \log f(x)$$
+该技巧常用于将梯度的积分转化为**期望**的形式。
+
+---
+
+## 3. 关键引理：边缘分数是条件分数的期望
+
+首先，我们要证明边缘分数本质上是所有可能原图 $x_0$ 对应的条件分数的加权平均。
+
+**证明：**
+根据边缘分布定义，对其求梯度：
+$$\nabla_{x_t} p(x_t) = \int \nabla_{x_t} p(x_t|x_0) p(x_0) dx_0$$
+应用**对数导数技巧**：
+$$\nabla_{x_t} p(x_t) = \int [p(x_t|x_0) \nabla_{x_t} \log p(x_t|x_0)] p(x_0) dx_0$$
+两边同时除以 $p(x_t)$：
+$$\frac{\nabla_{x_t} p(x_t)}{p(x_t)} = \int \nabla_{x_t} \log p(x_t|x_0) \frac{p(x_t|x_0) p(x_0)}{p(x_t)} dx_0$$
+根据贝叶斯定理 $p(x_0|x_t) = \frac{p(x_t|x_0)p(x_0)}{p(x_t)}$，上式简化为：
+$$\nabla_{x_t} \log p(x_t) = \int \nabla_{x_t} \log p(x_t|x_0) p(x_0|x_t) dx_0 = \mathbb{E}_{p(x_0|x_t)} [\nabla_{x_t} \log p(x_t|x_0)]$$
+**结论：边缘分数等于条件分数的后验期望。**
+
+---
+
+## 4. Score Matching 目标的等价性证明
+
+我们要对比两个目标函数：
+1. **Score Matching (SM):** 直接匹配边缘分数。
+   $$J_{SM}(\theta) = \mathbb{E}_{p(x_t)} \left[ \frac{1}{2} \| s_\theta(x_t) - \nabla_{x_t} \log p(x_t) \|^2 \right]$$
+2. **Denoising Score Matching (DSM):** 匹配条件分数（DMD 实际采用的）。
+   $$J_{DSM}(\theta) = \mathbb{E}_{p(x_0, x_t)} \left[ \frac{1}{2} \| s_\theta(x_t) - \nabla_{x_t} \log p(x_t|x_0) \|^2 \right]$$
+
+### 推导过程：
+利用**全期望公式** $\mathbb{E}_{p(x_0, x_t)}[\cdot] = \mathbb{E}_{p(x_t)}[\mathbb{E}_{p(x_0|x_t)}[\cdot]]$，将 $J_{DSM}$ 展开：
+$$J_{DSM}(\theta) = \mathbb{E}_{p(x_t)} \mathbb{E}_{p(x_0|x_t)} \left[ \frac{1}{2} \| s_\theta(x_t) \|^2 - s_\theta(x_t) \cdot \nabla_{x_t} \log p(x_t|x_0) + \frac{1}{2} \| \nabla_{x_t} \log p(x_t|x_0) \|^2 \right]$$
+
+将内部期望 $\mathbb{E}_{p(x_0|x_t)}$ 逐项作用：
+*   **第一项**：$\frac{1}{2} \| s_\theta(x_t) \|^2$ 与 $x_0$ 无关，保持不变。
+*   **第二项**：$- s_\theta(x_t) \cdot \mathbb{E}_{p(x_0|x_t)} [\nabla_{x_t} \log p(x_t|x_0)]$。根据第 3 节的引理，这等于 $- s_\theta(x_t) \cdot \nabla_{x_t} \log p(x_t)$。
+*   **第三项**：与参数 $\theta$ 无关，在优化时可视为常数 $C$。
+
+整合后得到：
+$$J_{DSM}(\theta) = \mathbb{E}_{p(x_t)} \left[ \frac{1}{2} \| s_\theta(x_t) \|^2 - s_\theta(x_t) \cdot \nabla_{x_t} \log p(x_t) \right] + C$$
+
+对比 $J_{SM}$ 的展开式：
+$$J_{SM}(\theta) = \mathbb{E}_{p(x_t)} \left[ \frac{1}{2} \| s_\theta(x_t) \|^2 - s_\theta(x_t) \cdot \nabla_{x_t} \log p(x_t) + \text{const} \right]$$
+
+### 结论：
+$$J_{DSM}(\theta) = J_{SM}(\theta) + \text{Const}$$
+这意味着两者的梯度 $\nabla_\theta$ 是完全一致的。**优化易于计算的条件分数目标，在统计期望上完全等价于优化复杂的边缘分布目标。**
+
+---
+
+## 5. 总结与直观理解
+
+1.  **蒙特卡洛积分的视角**：直接计算边缘分布需要对全局进行积分。通过转化为条件分数目标，我们实际上是在进行蒙特卡洛采样——每次采样一个样本对 $(x_0, x_t)$，计算其梯度。随着训练 Batch 的累积，这些样本梯度的平均值会精确指向全局分布对齐的方向。
+2.  **DMD 的工程实现**：在 DMD 中，由于 $p(x_t|x_0)$ 通常是标准的高斯加噪过程，其分数 $\nabla_{x_t} \log p(x_t|x_0)$ 有解析解（即 $-\frac{\epsilon}{\sigma_t}$），这使得大规模训练变得简单且高效。
+
+通过这一数学证明，我们不仅确认了 DMD 损失函数的合理性，也深刻理解了扩散模型为何能通过“去噪”这一简单任务，最终学会生成复杂的真实分布。
