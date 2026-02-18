@@ -228,12 +228,10 @@ $$
 # DiT
 用transformer架构替代了Unet，作为diffusion使用的架构。
 ![DiT](/images/blog/diffusion/image1.png)
-这张图已然说明一切。
-# 参考资料
+这张图已然说明一切.
 
 
-
-# 深度解析 DMD 损失函数：从边缘分布到条件分数的数学证明
+# Distribution Matching Distillation
 
 在单步扩散模型蒸馏（One-step Diffusion Distribution Matching Distillation, DMD）等论文中，损失函数的核心思想是让 Student 模型生成的分布 $p_{\text{fake}}$ 匹配 Teacher 模型的真实分布 $p_{\text{real}}$。
 
@@ -242,10 +240,13 @@ $$
 ## 1. 核心问题背景
 
 在扩散模型框架下，分布对齐等价于在各个噪声水平 $t$ 下对齐 Score：
+
 $$\nabla_{x_t} \log p_{\text{fake}}(x_t, t) \longleftrightarrow \nabla_{x_t} \log p_{\text{real}}(x_t, t)$$
 
 然而，边缘分布 $p(x_t)$ 是通过对整个数据集进行积分得到的：
+
 $$p(x_t) = \int p(x_t|x_0)p(x_0) dx_0$$
+
 直接对该积分求对数梯度在数学上是不可解的（Intractable）。为此，DMD 引入了 **Denoising Score Matching (DSM)** 的等价性结论。
 
 ---
@@ -256,11 +257,14 @@ $$p(x_t) = \int p(x_t|x_0)p(x_0) dx_0$$
 
 ### 2.1 莱布尼茨积分规则 (Leibniz Rule)
 在满足平滑性条件（如高斯分布）时，梯度算子可以与积分符号交换：
+
 $$\nabla_{x_t} \int p(x_t | x_0) p(x_0) dx_0 = \int \nabla_{x_t} p(x_t | x_0) p(x_0) dx_0$$
 
 ### 2.2 对数导数技巧 (Log-Derivative Trick)
 根据复合函数链式法则，对于任何正值函数 $f(x)$：
+
 $$\nabla \log f(x) = \frac{\nabla f(x)}{f(x)} \implies \nabla f(x) = f(x) \nabla \log f(x)$$
+
 该技巧常用于将梯度的积分转化为**期望**的形式。
 
 ---
@@ -271,13 +275,21 @@ $$\nabla \log f(x) = \frac{\nabla f(x)}{f(x)} \implies \nabla f(x) = f(x) \nabla
 
 **证明：**
 根据边缘分布定义，对其求梯度：
+
 $$\nabla_{x_t} p(x_t) = \int \nabla_{x_t} p(x_t|x_0) p(x_0) dx_0$$
+
 应用**对数导数技巧**：
+
 $$\nabla_{x_t} p(x_t) = \int [p(x_t|x_0) \nabla_{x_t} \log p(x_t|x_0)] p(x_0) dx_0$$
+
 两边同时除以 $p(x_t)$：
+
 $$\frac{\nabla_{x_t} p(x_t)}{p(x_t)} = \int \nabla_{x_t} \log p(x_t|x_0) \frac{p(x_t|x_0) p(x_0)}{p(x_t)} dx_0$$
+
 根据贝叶斯定理 $p(x_0|x_t) = \frac{p(x_t|x_0)p(x_0)}{p(x_t)}$，上式简化为：
+
 $$\nabla_{x_t} \log p(x_t) = \int \nabla_{x_t} \log p(x_t|x_0) p(x_0|x_t) dx_0 = \mathbb{E}_{p(x_0|x_t)} [\nabla_{x_t} \log p(x_t|x_0)]$$
+
 **结论：边缘分数等于条件分数的后验期望。**
 
 ---
@@ -286,12 +298,16 @@ $$\nabla_{x_t} \log p(x_t) = \int \nabla_{x_t} \log p(x_t|x_0) p(x_0|x_t) dx_0 =
 
 我们要对比两个目标函数：
 1. **Score Matching (SM):** 直接匹配边缘分数。
+2. 
    $$J_{SM}(\theta) = \mathbb{E}_{p(x_t)} \left[ \frac{1}{2} \| s_\theta(x_t) - \nabla_{x_t} \log p(x_t) \|^2 \right]$$
-2. **Denoising Score Matching (DSM):** 匹配条件分数（DMD 实际采用的）。
+
+3. **Denoising Score Matching (DSM):** 匹配条件分数（DMD 实际采用的）。
+4. 
    $$J_{DSM}(\theta) = \mathbb{E}_{p(x_0, x_t)} \left[ \frac{1}{2} \| s_\theta(x_t) - \nabla_{x_t} \log p(x_t|x_0) \|^2 \right]$$
 
 ### 推导过程：
 利用**全期望公式** $\mathbb{E}_{p(x_0, x_t)}[\cdot] = \mathbb{E}_{p(x_t)}[\mathbb{E}_{p(x_0|x_t)}[\cdot]]$，将 $J_{DSM}$ 展开：
+
 $$J_{DSM}(\theta) = \mathbb{E}_{p(x_t)} \mathbb{E}_{p(x_0|x_t)} \left[ \frac{1}{2} \| s_\theta(x_t) \|^2 - s_\theta(x_t) \cdot \nabla_{x_t} \log p(x_t|x_0) + \frac{1}{2} \| \nabla_{x_t} \log p(x_t|x_0) \|^2 \right]$$
 
 将内部期望 $\mathbb{E}_{p(x_0|x_t)}$ 逐项作用：
@@ -300,13 +316,17 @@ $$J_{DSM}(\theta) = \mathbb{E}_{p(x_t)} \mathbb{E}_{p(x_0|x_t)} \left[ \frac{1}{
 *   **第三项**：与参数 $\theta$ 无关，在优化时可视为常数 $C$。
 
 整合后得到：
+
 $$J_{DSM}(\theta) = \mathbb{E}_{p(x_t)} \left[ \frac{1}{2} \| s_\theta(x_t) \|^2 - s_\theta(x_t) \cdot \nabla_{x_t} \log p(x_t) \right] + C$$
 
 对比 $J_{SM}$ 的展开式：
+
 $$J_{SM}(\theta) = \mathbb{E}_{p(x_t)} \left[ \frac{1}{2} \| s_\theta(x_t) \|^2 - s_\theta(x_t) \cdot \nabla_{x_t} \log p(x_t) + \text{const} \right]$$
 
 ### 结论：
+
 $$J_{DSM}(\theta) = J_{SM}(\theta) + \text{Const}$$
+
 这意味着两者的梯度 $\nabla_\theta$ 是完全一致的。**优化易于计算的条件分数目标，在统计期望上完全等价于优化复杂的边缘分布目标。**
 
 ---
