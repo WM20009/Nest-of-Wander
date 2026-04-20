@@ -9,7 +9,7 @@ tags:
 description: 学习Diffusion时存一下checkpoints，便于复习。
 ---
 
-# DDPM
+# DDPM（likelihood-based）
 参考- [Understanding Diffusion Models: A Unified Perspective](https://arxiv.org/abs/2208.11970)
 **这里省略了大量的数学推导，仅保留必要的数学表达式，以提高可读性**
 
@@ -86,11 +86,11 @@ $$
 
 然后可以使用随机样本在时间步上进行优化。
 
-## 另外两种视角
+## 另外两种目标函数
 
 而事实上这个目标函数还有另外两种等效的形式
 
-### 第二种
+### 第二种（$\epsilon$-prediction）
 首先，我们可以利用重参数化技巧。在推导 $q(\boldsymbol{x}_{t}|\boldsymbol{x}_{0})$ 的形式时，我们可以重新排列方程来证明：
 
 $$
@@ -116,10 +116,65 @@ $$
 
 而这实际上就是DDPM的做法。
 ![ddpm](/images/blog/diffusion/image.png)
-### 第三种
-一个基于score-function的理解，可以看这个[视频](https://www.youtube.com/watch?v=lUljxdkolK8)理解一下大概的思想。
+### 第三种(v-prediction)
 
-接着可以看[Yang Song的blog](https://yang-song.net/blog/2021/score/),没有什么比这个写得更直观且完整了。
+v-prediction 通常在**方差保持 (Variance Preserving, VP)** 的设定下最为直观，即假定前向加噪过程满足 $\alpha_t^2 + \sigma_t^2 = 1$。
+既然两个数的平方和为 1，我们在数学上自然可以用三角函数来参数化它们。我们定义一个“噪声角” $\phi_t \in [0, \pi/2]$：
+*   **信号系数**: $\alpha_t = \cos\phi_t$
+*   **噪声系数**: $\sigma_t = \sin\phi_t$
+
+当 $t=0$ 时，$\phi_t \approx 0$（纯数据）；当 $t \to T$ 时，$\phi_t \approx \pi/2$（纯噪声）。
+此时，前向加噪公式可以写成两个正交基（数据 $x$ 和 独立噪声 $\epsilon$）的线性组合：
+$$z_t = \cos\phi_t \cdot x + \sin\phi_t \cdot \epsilon$$
+
+**定义 v (Velocity, 速度向量)**
+
+既然 $z_t$ 是随着角度 $\phi_t$ 变化在圆弧上移动的点，它的**运动速度 (Velocity)** 也就是对角度 $\phi_t$ 求导：
+$$v_t = \frac{\partial z_t}{\partial \phi_t} = \frac{\partial}{\partial \phi_t}(\cos\phi_t \cdot x + \sin\phi_t \cdot \epsilon)$$
+$$v_t = -\sin\phi_t \cdot x + \cos\phi_t \cdot \epsilon$$
+
+替换回 $\alpha_t$ 和 $\sigma_t$，这就得到了著名的 v-prediction 目标公式：
+$$v_t = \alpha_t \epsilon - \sigma_t x$$
+*(注意：$z_t$ 和 $v_t$ 在几何上永远是正交的，即 $z_t \cdot v_t = 0$)*
+
+写成矩阵的形式：
+$$ \begin{bmatrix} z_t \\ v_t \end{bmatrix} = \begin{bmatrix} \cos\phi_t & \sin\phi_t \\ -\sin\phi_t & \cos\phi_t \end{bmatrix} \begin{bmatrix} x \\ \epsilon \end{bmatrix} $$
+
+你会发现，中间那个矩阵**就是一个标准的二维旋转矩阵 $R(\phi_t)$**！它代表把 $(x, \epsilon)$ 坐标系旋转了 $-\phi_t$ 角度。
+
+**而正交旋转矩阵的逆，就是它的转置。**
+所以，想要反解 $x$ 和 $\epsilon$，根本不需要像图片里那样做恶心的代入消元，直接两边左乘转置矩阵即可：
+
+$$ \begin{bmatrix} x \\ \epsilon \end{bmatrix} = \begin{bmatrix} \cos\phi_t & -\sin\phi_t \\ \sin\phi_t & \cos\phi_t \end{bmatrix} \begin{bmatrix} z_t \\ v_t \end{bmatrix} $$
+
+直接展开，得到反解结果（对应图片中复杂的推导结论）：
+$$x = \cos\phi_t \cdot z_t - \sin\phi_t \cdot v_t$$
+$$\epsilon = \sin\phi_t \cdot z_t + \cos\phi_t \cdot v_t$$
+
+接下来我们推导$q(z_s|z_t,x),0<s<t<T$
+
+我们将刚才用神经网络预测出的 $\hat{v}_t$ 得到的反解 $\hat{x}$ 和 $\hat{\epsilon}$ 代入：
+$$z_s = \cos\phi_s (\cos\phi_t \cdot z_t - \sin\phi_t \cdot \hat{v}_t) + \sin\phi_s (\sin\phi_t \cdot z_t + \cos\phi_t \cdot \hat{v}_t)$$
+
+接下来，把 $z_t$ 和 $\hat{v}_t$ 的项分别合并（这正是初中数学的三角函数展开逆运算）：
+$$z_s = (\cos\phi_s \cos\phi_t + \sin\phi_s \sin\phi_t) \cdot z_t + (\sin\phi_s \cos\phi_t - \cos\phi_s \sin\phi_t) \cdot \hat{v}_t$$
+
+利用两角差的余弦和正弦公式，瞬间得到最终极致简约的结果：
+$$z_s = \cos(\phi_s - \phi_t) \cdot z_t + \sin(\phi_s - \phi_t) \cdot \hat{v}_t$$
+
+于是我们的预测目标就变成了v.
+
+通过上面的推导，你会发现 v-prediction 将扩散模型从“一维的加减噪声”变成了一个“**在超球面上旋转**”的问题（也就是图1那个四分之一圆弧的意思）。
+
+*   **前向加噪**：就是在 $x$ 和 $\epsilon$ 构成的平面上，将初始向量 $x$ 以速度 $v$ 向 $\epsilon$ 的方向**旋转** $\phi_t$ 的角度，得到 $z_t$。
+*   **网络预测**：模型不直接猜起点 $x$ 或终点 $\epsilon$，而是猜当前点 $z_t$ 所在位置的**切线运动方向（速度 $v_t$）**。
+
+
+# score-based diffusion
+[Generative Modeling by Estimating Gradients of the Data Distribution](https://yang-song.net/blog/2021/score/)
+这是作者本人的博客，写得清晰易懂，并不需要有任何SDE基础，只要有基础概率论基础和懂一点点随机过程的概念即可。
+
+事实上整个diffusion理论都被统一在了该SDE的框架之内，精妙绝伦。
 
 ## 条件生成
 参考[这个视频](https://www.youtube.com/watch?v=iv-5mZ_9CPY)，现在主流的方法是classifier-free guidance，大概的想法就是：
@@ -231,11 +286,7 @@ $$
 这张图已然说明一切.
 
 
-# Distribution Matching Distillation
-
-在单步扩散模型蒸馏（One-step Diffusion Distribution Matching Distillation, DMD）等论文中，损失函数的核心思想是让 Student 模型生成的分布 $p_{\text{fake}}$ 匹配 Teacher 模型的真实分布 $p_{\text{real}}$。
-
-在数学实现时，一个关键的转化是将难以直接计算的**边缘分布分数（Marginal Score）** $\nabla \log p(x_t)$ 转化为**条件分布分数（Conditional Score）** $\nabla \log p(x_t | x_0)$。本文将从数学推导出发，详细证明这一转化的合理性及其背后的**去噪分数匹配（Denoising Score Matching, DSM）**理论。
+# Denoising Score Matching
 
 ## 1. 核心问题背景
 
@@ -251,7 +302,7 @@ $$
 p(x_t) = \int p(x_t|x_0)p(x_0) dx_0
 $$
 
-直接对该积分求对数梯度在数学上是不可解的（Intractable）。为此，DMD 引入了 **Denoising Score Matching (DSM)** 的等价性结论。
+直接对该积分求对数梯度在数学上是不可解的（Intractable）。为此,引入了 **Denoising Score Matching (DSM)** 的等价性结论。
 
 ---
 
@@ -365,3 +416,241 @@ $$
 2.  **DMD 的工程实现**：在 DMD 中，由于 $p(x_t|x_0)$ 通常是标准的高斯加噪过程，其分数 $\nabla_{x_t} \log p(x_t|x_0)$ 有解析解（即 $-\frac{\epsilon}{\sigma_t}$），这使得大规模训练变得简单且高效。
 
 通过这一数学证明，我们不仅确认了 DMD 损失函数的合理性，也深刻理解了扩散模型为何能通过“去噪”这一简单任务，最终学会生成复杂的真实分布。
+
+# Latent Diffusion Model
+至此，我们从VAE来又回到了VAE，但是此VAE又不复当年。
+
+为了减少计算量，将diffusion过程从像素空间搬到一个潜空间中。这里的潜空间选用vae的潜空间。
+
+注意，这里的vae与原始的vae有一些不同。
+
+原始的VAE没有那么多各种各样的重建损失，还被KL压缩得太狠，损失掉信息，并且明明潜空间不是高斯还非要按高斯来采样，自然不行。
+
+LDM中的VAE更加重视重建，对潜空间本身没有太多要求，只约束方差不要太大，更像是一种AE（当然并非是一一对应的那种）。
+
+之前直接把潜空间当高斯分布来采样当然不行，而现在我们有了diffusion以后就能很从容地从高斯出发采样潜空间了。
+
+# Noise Schedule
+
+## 一、 离散马尔科夫转移到连续 SDE 的等价性证明
+
+在 Score-based 视角中，连续时间 $t \in [0, 1]$ 是通过将离散步骤 $N \to \infty$ 取极限得到的。连续形式的 SDE 一般定义为：
+$$dx = f(x, t)dt + g(t)dw$$
+其中 $f(x, t)$ 是漂移系数（Drift coefficient），$g(t)$ 是扩散系数（Diffusion coefficient），$dw$ 是标准的布朗运动（Wiener process）。
+
+我们可以通过 **Euler-Maruyama 离散化** 结合 **泰勒展开** 来证明离散马尔科夫链与连续 SDE 的等价性。设定时间步长 $\Delta t = 1/N$。
+
+### 1. Variance Preserving (VP SDE) ——  DDPM
+**离散马尔科夫转移（DDPM）**:
+$x_i = \sqrt{1 - \beta_i} x_{i-1} + \sqrt{\beta_i} z_i, \quad z_i \sim \mathcal{N}(0, I)$
+
+**推导过程**:
+令离散的噪声参数 $\beta_i$ 与连续时间的连续函数 $\beta(t)$ 关联，即 $\beta_i = \beta(t_i)\Delta t$。
+当 $\Delta t \to 0$ 时，对 $\sqrt{1 - \beta_i}$ 进行一阶泰勒展开：
+$\sqrt{1 - \beta_i} = \sqrt{1 - \beta(t_i)\Delta t} \approx 1 - \frac{1}{2}\beta(t_i)\Delta t$
+
+代入原式计算增量 $x_i - x_{i-1}$：
+$x_i - x_{i-1} \approx \left(1 - \frac{1}{2}\beta(t_i)\Delta t\right)x_{i-1} - x_{i-1} + \sqrt{\beta(t_i)\Delta t} z_i$
+$x_i - x_{i-1} \approx -\frac{1}{2}\beta(t_i)x_{i-1}\Delta t + \sqrt{\beta(t_i)}\sqrt{\Delta t} z_i$
+
+在极限 $\Delta t \to 0$ 下，增量 $x_i - x_{i-1} \to dx$，$\Delta t \to dt$，且随机项 $\sqrt{\Delta t} z_i \to dw$（布朗运动的增量特性）。
+**连续 SDE**:
+$$dx = -\frac{1}{2}\beta(t)x dt + \sqrt{\beta(t)} dw$$
+**Q:什么是VP？（方差保持）**
+
+**A:在加噪的每一步中，整个图像数据的边缘分布的方差（Magnitude / Scale）被保持住了。**
+
+让我们用最简单的数学来看。扩散模型的前向过程公式是：
+$$z_t = \alpha_t x + \sigma_t \epsilon$$
+
+在把图像 $x$ 喂给扩散模型之前，我们通常会做一步极其重要的数据预处理：**把图像像素值归一化到 $[-1, 1]$ 之间**。
+这意味着，在宏观统计上，我们可以假设初始真实数据 $x$ 的均值为 0，**方差为 1**，即 $Var(x) = 1$。
+同时，我们注入的纯噪声 $\epsilon \sim \mathcal{N}(0, I)$，它的**方差也是 1**，即 $Var(\epsilon) = 1$。
+
+现在，我们来计算一下 $t$ 时刻，混合了信号和噪声的图像 $z_t$ 的方差：
+根据概率论基本公式（因为真实图像 $x$ 和采样的噪声 $\epsilon$ 是相互独立的）：
+$$Var(z_t) = Var(\alpha_t x + \sigma_t \epsilon)$$
+$$Var(z_t) = \alpha_t^2 Var(x) + \sigma_t^2 Var(\epsilon)$$
+$$Var(z_t) = \alpha_t^2 \cdot 1 + \sigma_t^2 \cdot 1 = \alpha_t^2 + \sigma_t^2$$
+
+**“方差保持”的本质就在这里：**
+我们希望无论加噪到了哪一步（无论是 $t=1$ 还是 $t=1000$），输入给 U-Net 的图像 $z_t$ 的整体方差**始终维持在 1 不变**。
+为了让 $Var(z_t) \equiv 1$，我们就**必须强行设计一个规则（约束条件）**：
+$$\alpha_t^2 + \sigma_t^2 = 1$$
+这就是 VP（方差保持）这个名字的全部来源！
+
+**Q: 为什么要强行保持方差为 1？**
+**A:神经网络极其讨厌方差剧烈变化的输入。**
+
+*   如果不管方差，随着不断加噪声，图片的数值范围会变得越来越大。
+*   U-Net 在 $t=1$ 时看到的是方差为 1 的数据，在 $t=1000$ 时可能看到的是方差为 100 的数据。这种巨大的尺度差异会导致网络权重的梯度极其不稳定（容易梯度爆炸或消失），模型根本收敛不了。
+*   **VP 的意义在于**：它保证了 U-Net 在任何时刻接收到的输入张量（Tensor），其数值尺度（Scale）永远是稳定的 $\mathcal{N}(0, I)$。这极大地降低了神经网络的拟合难度。
+
+---
+
+
+### 2. Variance Exploding (VE SDE)
+**离散马尔科夫转移（SMLD）**:
+$x_i = x_{i-1} + \sqrt{\sigma_i^2 - \sigma_{i-1}^2} z_i, \quad z_i \sim \mathcal{N}(0, I)$
+
+**推导过程**:
+在这里，数据没有衰减项（$x_{i-1}$ 的系数为 1），仅有加噪项。
+令方差的增量 $\sigma_i^2 - \sigma_{i-1}^2 \approx \frac{d[\sigma^2(t)]}{dt} \Delta t$。
+代入原式计算增量 $x_i - x_{i-1}$：
+$x_i - x_{i-1} = \sqrt{\frac{d[\sigma^2(t)]}{dt} \Delta t} z_i = \sqrt{\frac{d[\sigma^2(t)]}{dt}} \sqrt{\Delta t} z_i$
+
+同样取极限 $\Delta t \to 0$：
+**连续 SDE**:
+$$dx = \sqrt{\frac{d[\sigma^2(t)]}{dt}} dw$$
+
+---
+
+#### 3. sub-VP SDE 
+Yang Song 在论文中提出了一种方差比 VP 更小的变体。其马尔科夫转移并非从历史模型中继承，而是直接为了在连续时间中约束方差而设计的。
+**连续 SDE**:
+$$dx = -\frac{1}{2}\beta(t)x dt + \sqrt{\beta(t)(1 - e^{-2\int_0^t \beta(s)ds})} dw$$
+
+---
+
+### 二、 三种调度的核心机制与优势
+
+为了理解它们“好在哪”，我们需要看它们随着时间 $t$ 变化时，**边缘分布 $q(x_t | x_0)$** 的方差表现。
+
+| 调度方案 | 边缘分布方差 $\text{Var}[x_t \vert x_0]$ | 优势与核心亮点 |
+|:---|:---|:---|
+| **VE SDE** | $\sigma^2(t)I$ | **方差爆炸，保持尺度**：模型不改变原始数据的均值尺度（只加噪不收缩）。在处理高维空间（如高分辨率图像、3D点云）时，数学形式极其简单，非常适合基于 Score Matching 的网络去学习不同尺度下的分数。 |
+| **VP SDE** | $(1 - e^{-\int_0^t \beta(s)ds})I$ | **方差守恒，极限稳定**：由于 $-\frac{1}{2}\beta(t)x$ 这个负漂移项的存在，数据会被不断拉向原点。当 $t \to \infty$ 时，其方差始终被死死限制在 $1$（即标准正态分布）。这使得训练极其稳定，天然契合变分推断（VAE）和似然估计的数学框架。 |
+| **sub-VP SDE** | $(1 - e^{-\int_0^t \beta(s)ds})^2 I$ | **方差更小，更高似然**：这是论文作者通过数学推导出的特例。它的方差在任何时刻都严格小于 VP SDE。**好在哪**：在精确估计似然度（Likelihood）和计算 BPD（Bits Per Dimension）跑分时，由于随机游走的方差被进一步压扁，前向和反向过程的轨迹更加确定，通常能得到目前这三种里最好的理论似然度得分。 |
+
+---
+
+### 三、 究竟满足怎样的标准才算一个“好”的噪声调度？
+
+评价一个噪声调度方案好坏，本质上是在评价它**构建数据与噪声之间桥梁（信噪比演化轨迹）的质量**。在数学和工程上，一个完美的调度需要满足以下四大标准：
+
+1. **信噪比 (SNR) 边界的极致覆盖**
+   * **初始状态 ($t=0$)**：SNR 必须趋近于 $\infty$。模型能看见纯净的数据，没有任何噪声干扰。如果 $t=0$ 时仍有微弱噪声（这在某些早期的线性调度中会发生），会导致模型生成的图片在最后一刻依然模糊。
+   * **终结状态 ($t=1$)**：SNR 必须趋近于 $0$（即所谓的 Zero-SNR 缺陷修复）。数据必须彻底被磨灭为完全的先验分布 $\mathcal{N}(0, I)$。如果信息没擦干净，模型在反向生成时就容易产生颜色偏移（例如生成图片平均亮度偏暗）。
+2. **中间状态的信息流失平滑度 (Smooth Information Destruction)**
+   * 在加噪的中间过程，信号不能消失得太快，也不能太慢。如果破坏太快（像线性的 VP 调度在后期），模型绝大多数时间都在对着纯噪声“瞎猜”；如果像 Cosine Schedule 一样让信噪比线性下降，网络在每一个时间步都能获得稳定且有效的分数匹配（Score Matching）梯度。
+3. **网络学习的难易度 (Optimal Target Variance)**
+   * 好的调度应当使得目标函数的方差在整个时间步上尽可能平稳。如 Karras 在 EDM 中指出的，如果 $\sigma_t$ 选取不当，某些时间步的 Loss 权重会极大，导致网络只顾着拟合某一种特定程度的噪声，而忽略了其他细节。
+4. **易于计算和求解 ODE (Tractability)**
+   * 它必须能推导出解析的 $q(x_t | x_0)$（即必须能写成高斯分布），否则训练时无法通过“一步加噪”进行重参数化采样，这直接决定了扩散模型能否进行大规模并行训练。
+
+**从宏观（物理和流形）的角度来看，我们真正关心的确实是边缘分布 $q(x_t)$。** 因为正是 $q(x_t)$ 描述了整个真实数据分布 $p_{data}(x)$ 是如何一步步演化成纯噪声分布 $\mathcal{N}(0, I)$ 的。
+
+但在**数学推导、模型训练和调度设计**的微观视角中，我们绝口不提（或者说尽量避开） $q(x_t)$，而是死死盯住条件分布（也就是转移核） $q(x_t|x_0)$ 及其方差。
+
+为什么会产生这种反差？核心原因可以归结为以下三点：
+
+### 1. 现实的无奈：$q(x_t)$ 在数学上是“不可计算”的 (Intractable)
+
+根据全概率公式，$q(x_t)$ 是由初始数据分布和转移概率积分得来的：
+$$q(x_t) = \int q(x_t|x_0) p_{data}(x_0) dx_0$$
+
+这里的致命问题是：**我们根本不知道真实的数据分布 $p_{data}(x_0)$ 是什么表达式！** 
+自然界中所有猫的图片、所有高分辨率的 3D 点云，它们的分布解析式是未知的（这也是我们为什么要训练生成模型的原因）。因为 $p_{data}(x_0)$ 未知且极其复杂，上述积分根本无法求解。
+
+如果 $q(x_t)$ 算不出来，我们就无法知道在任意时刻 $t$ 的**分数 (Score)** $\nabla_{x_t} \log q(x_t)$。既然不知道真实的分数，神经网络 $s_\theta(x_t, t)$ 就失去了学习的“目标标签”（Ground Truth）。
+
+### 2. 破局的关键：Denoising Score Matching (去噪分数匹配) 的魔法
+
+2011年，Pascal Vincent 提出了去噪分数匹配（后来被 Yang Song 完美融合到 SDE 框架中）。这是一个堪称“魔法”的数学等价定理：
+
+**“拟合未知的边缘分布分数 $\nabla_{x_t} \log q(x_t)$，在数学期望上等价于拟合已知的条件分布分数 $\nabla_{x_t} \log q(x_t|x_0)$。”**
+
+由于 $q(x_t|x_0)$ 通常被我们设计为一个简单的高斯分布 $\mathcal{N}(\mu(x_0, t), \sigma^2(t)I)$，它的分数极其简单，就是纯粹的噪声：
+$$\nabla_{x_t} \log q(x_t|x_0) = -\frac{x_t - \mu(x_0, t)}{\sigma^2(t)} = -\frac{\epsilon}{\sigma(t)}$$
+
+**结论：** 我们之所以只盯着 $q(x_t|x_0)$，是因为**它是我们在整个系统里唯一能写出解析式、唯一能精确计算、并直接作为神经网络 Loss 目标的东西**。
+
+### 3. 为什么要特别关注 $q(x_t|x_0)$ 的“方差”？
+
+如果你仔细看上面那个分数的解析式 $\nabla_{x_t} \log q(x_t|x_0) = -\frac{\epsilon}{\sigma(t)}$，你会发现分母正是 $q(x_t|x_0)$ 的标准差 $\sigma(t)$。
+
+我们极其关注方差 $\sigma^2(t)$（也就是噪声调度），原因如下：
+
+*   **方差定义了信噪比 (SNR)：** $x_t$ 是由原始数据（信号）和注入的方差（噪声）组合而成的。方差的变化曲线 $\sigma^2(t)$ 直接决定了在时刻 $t$，图像里还剩多少“原图”，加了多少“雪花”。
+*   **方差控制了神经网络的学习难度：** 
+    *   如果方差增长太快（例如一上来就加满噪声），网络在 $t=0.1$ 时就完全看不见原图了，只能瞎猜，导致 Loss 爆炸或梯度消失。
+    *   如果方差增长太慢，网络大部分时间都在做极其简单的微小去噪任务，不仅浪费算力，而且到了最后时刻 $T$，图像还没变成纯正态分布。
+*   **保证 $q(x_T)$ 成为标准高斯的先决条件：** 我们虽然算不出 $q(x_t)$，但我们**必须保证**终局的 $q(x_T) \approx \mathcal{N}(0, I)$。怎样才能保证？只有当 $q(x_T|x_0)$ 的方差大到足以彻底“淹没”任意 $x_0$ 的特征时，积分出来的 $q(x_T)$ 才会是一个完美的纯噪声分布。
+
+
+
+这是一个非常务实的问题！既然咱们不谈纯理论，那我们就直接从**工业界（如 OpenAI, NVIDIA, Stability AI）的实际工程经验**出发，来看看在真实的代码和模型中，究竟哪种更好，以及大家都在用什么“具体参数和配方”。
+
+先给出直接的结论：**没有绝对的谁比谁好，但 VP 赢得了“古典时代”，EDM 统一了标准，而现在的“当红炸子鸡”是 Flow Matching（本质上是一种全新的调度）。**
+
+*   **早期的赢家是 VP (方差保持)**：因为 VP 在加噪过程中强行把方差缩放到 1，这让神经网络的输入数值范围始终稳定在 $[-1, 1]$ 附近，**极大地避免了梯度爆炸和数值溢出**。早期的 Stable Diffusion (1.4/1.5) 和 Midjourney 都是基于 VP 的。
+*   **VE (方差爆炸) 的工程痛点**：VE 的方差会一直涨到几百甚至上千，这在写代码时对神经网络的 LayerNorm 和权重初始化极度不友好。
+*   **后来的大一统 (EDM)**：NVIDIA 的 Karras 证明，只要你在网络输入前做一次**“缩放预处理 (Pre-conditioning)”**，VE 和 VP 效果一模一样。
+
+下面是目前工业界**最流行、最成熟的 4 种具体噪声调度设置方案**（可以直接抄进代码里的那种）：
+
+
+### 1. Cosine Schedule (余弦调度) —— OpenAI 的经典配方
+**适用场景**：在像素空间（Pixel-space）直接生成图像，或者做 3D/4D 视觉的基础重建。
+**为什么好**：最早的线性调度（Linear）在最后几个时间步加噪太猛，导致图像信息瞬间丢失，模型最后全在瞎猜。Cosine 调度让加噪过程变成一条平滑的“S型曲线”，中间慢、两头快，极大地保留了图像的中频细节。
+
+**具体设置方案 (公式与参数)**：
+*   具体函数：$\bar{\alpha_t}=f(t) = \cos^2\left( \frac{t + s}{1 + s} \cdot \frac{\pi}{2} \right) (t \in [0,1])$
+*   定义噪声方差 $\beta_t =1- \frac{\bar{\alpha_t}}{\bar{\alpha_{t-1}}}$
+*   **核心参数**：偏移量 $s = 0.008$。加这个 $s$ 是为了防止在 $t=0$（刚开始加噪）时噪声太小导致网络难以优化。
+![cos scheduler](/images/blog/diffusion/image4.png)
+### 2. Zero-SNR & Enforce Zero (零信噪比调度) —— SD 2.0+ 的补丁
+**适用场景**：需要生成极暗、极亮图像，或者做高保真图像编辑（Inpainting）。
+**为什么好**：人们发现标准 VP 调度在最后一步 $T$ 时，信噪比并没有降到绝对的 0（原图信息还剩了一点点隐蔽的低频信号）。这导致 Stable Diffusion 1.5 永远画不出“纯黑的夜空”或“纯白的雪地”，平均亮度总是灰蒙蒙的。
+
+**具体设置方案 (Lin et al., 2023)**：
+*   在代码里强制修改最后一步：原本 $\bar{\alpha}_T$ 可能是一个很小的数（如 $10^{-4}$），现在**强制设置 $\bar{\alpha}_T = 0$**。
+*   同时对前面的时间步进行线性缩放（Rescale），确保曲线平滑。配合 `v-prediction` 目标函数一起使用，直接解决了图像发灰的问题。
+```python
+# Convert betas to alphas_bar_sqrt
+    alphas = 1.0 - betas
+    alphas_cumprod = torch.cumprod(alphas, dim=0)
+    alphas_bar_sqrt = alphas_cumprod.sqrt()
+
+    # Store old values.
+    alphas_bar_sqrt_0 = alphas_bar_sqrt[0].clone()
+    alphas_bar_sqrt_T = alphas_bar_sqrt[-1].clone()
+
+    # Shift so the last timestep is zero.
+    alphas_bar_sqrt -= alphas_bar_sqrt_T
+
+    # Scale so the first timestep is back to the old value.
+    alphas_bar_sqrt *= alphas_bar_sqrt_0 / (alphas_bar_sqrt_0 - alphas_bar_sqrt_T)
+
+    # Convert alphas_bar_sqrt to betas
+    alphas_bar = alphas_bar_sqrt**2  # Revert sqrt
+    alphas = alphas_bar[1:] / alphas_bar[:-1]  # Revert cumprod
+    alphas = torch.cat([alphas_bar[0:1], alphas])
+    betas = 1 - alphas
+
+    return betas
+```
+
+
+
+### 3. EDM Schedule (Karras 调度) —— 追求极致质量的工业标准
+**适用场景**：高分辨率图像生成，当前许多最强二次元模型（如 NovelAI 及其变体）底层的采样策略。
+**为什么好**：Karras 抛弃了传统的 $t$，直接把噪声标准差 $\sigma$ 作为调度的核心。他发现网络在特定大小的噪声下学得最好，于是提出在训练时，直接按照对数正态分布去采样 $\sigma$。
+
+**具体设置方案 (来自 EDM 论文的硬核参数)**：
+*   训练时采用对数正态分布抽样噪声大小：$\ln(\sigma) \sim \mathcal{N}(P_{mean}, P_{std}^2)$
+*   **最佳超参数**：$P_{mean} = -1.2$, $P_{std} = 1.2$。
+*   采样时（Inference）使用等比数列加上微小的多项式扭曲：
+    $\sigma_i = \left( \sigma_{max}^{\frac{1}{\rho}} + \frac{i}{N-1}(\sigma_{min}^{\frac{1}{\rho}} - \sigma_{max}^{\frac{1}{\rho}}) \right)^\rho$
+*   **最佳超参数**：$\sigma_{min} = 0.002$, $\sigma_{max} = 80$, $\rho = 7$。
+
+
+### 4. Rectified Flow / Flow Matching (流匹配) —— 当下最火的绝对主流
+**适用场景**：Stable Diffusion 3, Flux.1, Sora 以及最新的 3D/视频生成大模型。
+**为什么好**：不玩 SDE 的弯弯绕绕了，直接用常微分方程 (ODE) 走**直线**。从纯噪声到真实图像，两点之间直线最短。这让采样速度发生质变（过去需要 50 步，现在 4-8 步就能出极高质量的图），而且极其容易扩展到高分辨率。
+
+**具体设置方案 (Shifted Flow)**：
+*   加噪极其简单，就是一个线性组合：$x_t = t \cdot \text{noise} + (1 - t) \cdot \text{data}$ （$t \in [0, 1]$）
+*   **高分辨率的杀手锏 (Time Shifting)**：SD3 和 Flux 发现，分辨率越高（比如 1024x1024），图像本身含有的信息量极大，同样的噪声加进去显得“微不足道”。因此他们引入了 Shift 参数 $m$：
+    $t' = \frac{m \cdot t}{1 + (m - 1) \cdot t}$
+*   **具体参数**：对于 256x256 图像 $m \approx 1$；对于 1024x1024 图像，**$m$ 通常设置为 $3.0$ 甚至更大**（把重点计算资源集中在噪声更大的早期阶段）。
