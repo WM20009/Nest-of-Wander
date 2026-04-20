@@ -3,13 +3,15 @@ import type { CollectionEntry } from 'astro:content';
 import PostPreview from './PostPreview.astro'
 
 interface Props {
-    posts: CollectionEntry<'blog'>
+    posts: CollectionEntry<'blog'>[]
     heading?: string
     mode?: 'row' | 'col'
 }
 
 const { posts, heading, mode = 'col' } = Astro.props
-const sortedPosts = posts.sort((a, b) => new Date(b.date).valueOf() - new Date(a.date).valueOf());
+const sortedPosts = [...posts].sort(
+    (a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf()
+);
 ---
 { heading ? <h5 class={`post-preview__heading post-preview__heading--${mode} ink-h`}>{heading}</h5> : ''}
 <section class={`post-preview__list post-preview__list--${mode}`}>
