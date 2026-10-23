@@ -1,17 +1,23 @@
 import Redis from 'ioredis'
+import { getDateKeyInShanghai, type ViewStats } from "./shared";
+
 const client = new Redis(import.meta.env.REDIS_URI)
 
-export const getViewsBySlug = async (slug: string) => {
-	if (slug) {
-		const prevValue = await client.get(slug);
-		let newValue = 1;
-		if (prevValue) {
-			newValue = parseInt(`${prevValue}`) + 1;
-			await client.set(slug, newValue);
-		} else {
-			await client.set(slug, 1);
-		}
-		return newValue;
+export const getViewsBySlug = async (slug: string): Promise<ViewStats> => {
+	if (!slug) {
+		throw new Error("A valid slug is required to collect post stats.");
 	}
-	return 0;
+
+	const dateKey = getDateKeyInShanghai(new Date());
+	const totalKey = `post_views_total:${slug}`;
+	const dailyKey = `post_views_daily:${slug}:${dateKey}`;
+
+	const totalViews = await client.incr(totalKey);
+	const todayViews = await client.incr(dailyKey);
+
+	return {
+		slug,
+		todayViews,
+		totalViews,
+	};
 };

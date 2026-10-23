@@ -1,3 +1,25 @@
 [![zread](https://img.shields.io/badge/Ask_Zread-_.svg?style=flat&color=00b0aa&labelColor=000000&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQuOTYxNTYgMS42MDAxSDIuMjQxNTZDMS44ODgxIDEuNjAwMSAxLjYwMTU2IDEuODg2NjQgMS42MDE1NiAyLjI0MDFWNC45NjAxQzEuNjAxNTYgNS4zMTM1NiAxLjg4ODEgNS42MDAxIDIuMjQxNTYgNS42MDAxSDQuOTYxNTZDNS4zMTUwMiA1LjYwMDEgNS42MDE1NiA1LjMxMzU2IDUuNjAxNTYgNC45NjAxVjIuMjQwMUM1LjYwMTU2IDEuODg2NjQgNS4zMTUwMiAxLjYwMDEgNC45NjE1NiAxLjYwMDFaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00Ljk2MTU2IDEwLjM5OTlIMi4yNDE1NkMxLjg4ODEgMTAuMzk5OSAxLjYwMTU2IDEwLjY4NjQgMS42MDE1NiAxMS4wMzk5VjEzLjc1OTlDMS42MDE1NiAxNC4xMTM0IDEuODg4MSAxNC4zOTk5IDIuMjQxNTYgMTQuMzk5OUg0Ljk2MTU2QzUuMzE1MDIgMTQuMzk5OSA1LjYwMTU2IDE0LjExMzQgNS42MDE1NiAxMy43NTk5VjExLjAzOTlDNS42MDE1NiAxMC42ODY0IDUuMzE1MDIgMTAuMzk5OSA0Ljk2MTU2IDEwLjM5OTlaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik0xMy43NTg0IDEuNjAwMUgxMS4wMzg0QzEwLjY4NSAxLjYwMDEgMTAuMzk4NCAxLjg4NjY0IDEwLjM5ODQgMi4yNDAxVjQuOTYwMUMxMC4zOTg0IDUuMzEzNTYgMTAuNjg1IDUuNjAwMSAxMS4wMzg0IDUuNjAwMUgxMy43NTg0QzE0LjExMTkgNS42MDAxIDE0LjM5ODQgNS4zMTM1NiAxNC4zOTg0IDQuOTYwMVYyLjI0MDFDMTQuMzk4NCAxLjg4NjY0IDE0LjExMTkgMS42MDAxIDEzLjc1ODQgMS42MDAxWiIgZmlsbD0iI2ZmZiIvPgo8cGF0aCBkPSJNNCAxMkwxMiA0TDQgMTJaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00IDEyTDEyIDQiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K&logoColor=ffffff)](https://zread.ai/WM20009/Nest-of-Wander)
 
 ## My personal blog
+
+### 文章搜索
+
+搜索数据随文章页面自动生成，无需手动更新。支持中文、英文，以及标题、标签、摘要和正文搜索；多个关键词用空格分隔，结果优先显示标题匹配的文章。
+
+### 构建与部署
+
+正式网站：https://nest-of-wander-gt3l.vercel.app
+
+使用 Node.js 22，运行 `npm run build` 或 `pnpm run build`。构建命令会自动修正旧版 Astro 4 部署组件生成的 Node.js 运行版本，请勿跳过命令末尾的修正步骤。
+
+文章阅读计数需要在本地 `.env` 和对应 Vercel 项目中填写 `TURSO_DB_URL`、`TURSO_DB_AUTH_TOKEN`；这两项配置不会提交到 Git。数据库表会在首次计数时自动创建。
+
+### 首页访客地图
+
+首页的 “All Posts” 下方已接入 MapMyVisitors 地图。更换地图的方法：
+
+1. 在 MapMyVisitors 中为自己的博客生成 **Map Widget** 嵌入代码。
+2. 将代码中 `<script id="mapmyvisitors" ...>` 的 `src` 地址复制到 `src/config.ts` 的 `VISITOR_MAP_WIDGET_URL`，使用完整的 `https://` 地址，不要复制整段 HTML，也不要使用他人网站的地图地址。
+3. 重新构建并部署博客。
+
+该设置为空时，首页不显示地图区块，也不请求 MapMyVisitors。地图仅在首页加载，统计首页访客来源；文章阅读次数仍由原有功能单独统计。地图需要真实访问后才会积累数据。

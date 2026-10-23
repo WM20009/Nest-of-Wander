@@ -3,11 +3,13 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node ./scripts/fix-vercel-runtime.mjs",
     "check": "astro check",
-    "postbuild": "node ./scripts/search/prepare-index.js",
     "preview": "astro preview",
     "check:type": "tsc --project tsconfig.json --pretty --noEmit",
     "lint": "biome lint src",

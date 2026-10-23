@@ -28,7 +28,7 @@ export const SITE = {
 	name: "Wander's Whisper",
 	title: "I'm wandering",
 	description: "--'Just do something，give destiny a reason to stir.'",
-	url: "https://astro-ink.vercel.app",
+	url: "https://nest-of-wander-gt3l.vercel.app",
 	githubUrl: "https://github.com/WM20009",
 	listDrafts: true,
 	image:
@@ -55,4 +55,8 @@ export const USE_MEDIA_THUMBNAIL = true;
 export const USE_AUTHOR_CARD = true;
 export const USE_SUBSCRIPTION = false; /* works only when USE_AUTHOR_CARD is true */
 
-export const USE_VIEW_STATS = false;
+export const USE_VIEW_STATS = true;
+
+// Paste the src URL from your site's MapMyVisitors Map Widget embed code.
+// Leave empty to hide the homepage visitor map.
+export const VISITOR_MAP_WIDGET_URL = "https://mapmyvisitors.com/map.js?d=82d0ub4VqgYhj69z2BdWbGWTg_Yt5ctKrNcLd_MH0aU&cl=ffffff&w=a";

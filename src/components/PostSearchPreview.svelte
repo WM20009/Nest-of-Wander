@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { isSearchVisible } from '../store/search'
+
     type Props = {
         slug: string
         title: string
@@ -8,18 +10,19 @@
     }
     export let post: Props
     export let isLast: boolean = false
+
 </script>
 <div class="post-preview hover:bg-theme-primary">
     <div class="flex-1">
         <h4 class="post-preview__title">
-            <a href={`/${post.category}/${post.slug}`} title={post.title}>{post.title} &rarr;</a>
+            <a href={`/${post.category}/${encodeURIComponent(post.slug)}`} title={post.title} on:click={() => isSearchVisible.set(false)}>{post.title} &rarr;</a>
         </h4>
         <p class="post-preview__desc">
             {post.description}
         </p>
         <ul class="tag-list">
             {#each post.tags as tag}
-                <a class="tag" href={`/tags/${tag}`} title={tag}>{tag}</a>
+                <a class="tag" href={`/tags/${encodeURIComponent(tag)}`} title={tag} on:click={() => isSearchVisible.set(false)}>{tag}</a>
             {/each}
         </ul>
     </div>

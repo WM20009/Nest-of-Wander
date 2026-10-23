@@ -5,6 +5,7 @@ import { getCollection, getEntryBySlug } from 'astro:content'
 import DefaultPageLayout from '$/layouts/default.astro'
 import PostPreviewList from '$/components/PostPreviewList.astro'
 import Prose from '$/components/Prose.astro'
+import VisitorMap from '$/components/VisitorMap.astro'
 import { Content as AboutAstroInk } from './_astro-ink.md'
 
 const recentposts = await getCollection('blog')
@@ -34,6 +35,7 @@ const description = 'Astro-Ink is a crisp, minimal, personal blog theme for Astr
     <div class="page__actions">
         <a class="action__go-to-blog ink-h" href="/blog" title="All Posts">All Posts &rarr;</a>
     </div>
+    <VisitorMap />
 </DefaultPageLayout>
 
 <style>

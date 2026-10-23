@@ -19,8 +19,8 @@ import rehypeKatex from 'rehype-katex'
 
 // https://astro.build/config
 export default defineConfig( /** @type {import('astro').AstroUserConfig} */{
-  output: 'static',
-  site: 'https://astro-ink.vercel.app', // Your public domain, e.g.: https://my-site.dev/. Used to generate sitemaps and canonical URLs.
+  output: 'hybrid',
+  site: 'https://nest-of-wander-gt3l.vercel.app', // Used to generate sitemaps and canonical URLs.
   server: {
     // port: 4321, // The port to run the dev server on.
   },
@@ -34,10 +34,7 @@ export default defineConfig( /** @type {import('astro').AstroUserConfig} */{
     shikiConfig: {
       theme: 'css-variables',
     },
-    remarkPlugins: [
-      remarkCodeTitles
-    ],
-    remarkPlugins: [remarkMath],
+    remarkPlugins: [remarkCodeTitles, remarkMath],
     rehypePlugins: [rehypeKatex]
   },
   integrations: [
@@ -61,5 +58,5 @@ export default defineConfig( /** @type {import('astro').AstroUserConfig} */{
       allowNodeBuiltins: true
     }
   },
-  //adapter: vercel()
+  adapter: vercel()
 });

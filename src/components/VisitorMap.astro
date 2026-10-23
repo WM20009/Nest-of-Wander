@@ -1,0 +1,58 @@
+---
+import { VISITOR_MAP_WIDGET_URL } from '$/config';
+
+const widgetUrl = VISITOR_MAP_WIDGET_URL.trim();
+---
+
+{widgetUrl && (
+    <section class="visitor-map" aria-labelledby="visitor-map-heading">
+        <h2 id="visitor-map-heading" class="ink-h">visitors</h2>
+        <div id="visitor-map-widget" class="visitor-map__widget" data-widget-url={widgetUrl}>
+            <p class="visitor-map__status" role="status" hidden>访客地图加载中…</p>
+            <noscript>请启用 JavaScript 查看访客地图。</noscript>
+        </div>
+        <script is:inline data-astro-rerun>
+            (() => {
+                const container = document.getElementById('visitor-map-widget');
+                if (!container || container.querySelector('#mapmyvisitors')) return;
+
+                const status = container.querySelector('[role="status"]');
+                status.hidden = false;
+
+                const widget = document.createElement('script');
+                widget.id = 'mapmyvisitors';
+                widget.src = container.dataset.widgetUrl;
+                widget.async = true;
+                widget.onload = () => { status.hidden = true; };
+                widget.onerror = () => {
+                    status.textContent = '访客地图暂时无法加载。';
+                };
+                container.appendChild(widget);
+            })();
+        </script>
+    </section>
+)}
+
+<style>
+    .visitor-map {
+        @apply border-t border-gray-200 dark:border-gray-700 pt-4 pb-8;
+    }
+
+    .visitor-map__widget {
+        width: 100%;
+        max-width: 560px;
+        margin-inline: auto;
+        min-height: 180px;
+        text-align: center;
+    }
+
+    .visitor-map__widget :global(img),
+    .visitor-map__widget :global(iframe),
+    .visitor-map__widget :global(canvas) {
+        max-width: 100%;
+    }
+
+    .visitor-map__status {
+        @apply text-sm text-gray-500 dark:text-gray-400 py-8;
+    }
+</style>

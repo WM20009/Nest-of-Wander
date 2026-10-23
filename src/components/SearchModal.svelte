@@ -11,6 +11,7 @@
     }
 
 </script>
+<svelte:window on:keydown={handleEsc} />
 {#if $isSearchVisible}
     <div class="modal__backdrop" role="button" tabindex="0" on:click={dismissModal} on:keydown={handleEsc} transition:fade></div>
     <div class="modal" role="dialog">

@@ -1,16 +1,24 @@
-const client = new Map<string, number>();
+import { getDateKeyInShanghai, type ViewStats } from "./shared";
 
-export const getViewsBySlug = async (slug: string) => {
-	if (slug) {
-		const prevValue = client.get(slug);
-		let newValue = 1;
-		if (prevValue) {
-			newValue = parseInt(`${prevValue}`) + 1;
-			client.set(slug, newValue);
-		} else {
-			client.set(slug, 1);
-		}
-		return newValue;
+const totalViews = new Map<string, number>();
+const dailyViews = new Map<string, number>();
+
+export const getViewsBySlug = async (slug: string): Promise<ViewStats> => {
+	if (!slug) {
+		throw new Error("A valid slug is required to collect post stats.");
 	}
-	return 0;
+
+	const dateKey = getDateKeyInShanghai(new Date());
+	const dailyKey = `${slug}:${dateKey}`;
+	const nextTotalViews = (totalViews.get(slug) ?? 0) + 1;
+	const nextDailyViews = (dailyViews.get(dailyKey) ?? 0) + 1;
+
+	totalViews.set(slug, nextTotalViews);
+	dailyViews.set(dailyKey, nextDailyViews);
+
+	return {
+		slug,
+		todayViews: nextDailyViews,
+		totalViews: nextTotalViews,
+	};
 };
