@@ -30,8 +30,8 @@
 </script>
 <div class="search">
     <div class="search__ctrl">
-        <label for="search"><SearchIcon found={searchResults.length > 0} /><span class="sr-only">搜索文章</span></label>
-        <input id="search" type="search" name="search" bind:this={searchInput} placeholder="搜索标题、标签或正文" bind:value={searchQuery} />
+        <label for="search"><SearchIcon found={searchResults.length > 0} /></label>
+        <input id="search" type="search" name="search" aria-label="搜索文章" bind:this={searchInput} placeholder="搜索标题、标签或正文" bind:value={searchQuery} />
     </div>
     <div class="search__results">
         {#if searchResults.length}
